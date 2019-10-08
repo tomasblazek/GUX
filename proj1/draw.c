@@ -6,17 +6,18 @@
  * Standard XToolkit and OSF/Motif include files.
  */
 #include <X11/Intrinsic.h>
-#include <Xm/Xm.h>
+#include <Xm/Xm.h> 
 
 /*
  * Public include files for widgets used in this file.
  */
-#include <Xm/MainW.h>
-#include <Xm/Form.h>
+#include <Xm/MainW.h> 
+#include <Xm/Form.h> 
 #include <Xm/Frame.h>
 #include <Xm/DrawingA.h>
 #include <Xm/PushB.h>
 #include <Xm/RowColumn.h>
+#include <Xm/Label.h>
 
 /*
  * Common C library include files
@@ -29,16 +30,27 @@
  */
 
 #define LINES_ALLOC_STEP	10	/* memory allocation stepping */
-XSegment *objects = NULL;		/* array of line descriptors */
+#define WIDTH 500   /* window width */
+#define HEIGHT 400   /* window height */
+
+enum Shape {Line, Rectangle, Elipse} c_shape = Elipse; /* current shape */
+typedef struct PictureElement{
+    enum Shape shape;
+    int x1;
+    int y1;
+    int x2;
+    int y2;
+} PictureElement;
+
+PictureElement *objects = NULL; /* array of objects */
 int maxObjects = 0;		/* space allocated for max objects */
 int n_object = 0;			/* current number of objects */
 
 GC drawGC = 0;			/* GC used for final drawing */
-GC inputGC = 0;			/* GC used for drawing current position */
+Widget drawArea;
 
-int x1, y1, x2, y2;		/* input points */
+int x1, y1, x2, y2;		/* input points */ 
 int button_pressed = 0;		/* input state */
-enum Shape {Line, Rectangle} c_shape = Rectangle; /* current shape */
 
 
 void swap(int *a, int *b){
@@ -50,26 +62,31 @@ void swap(int *a, int *b){
 
 
 void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
-	int height, width;
+    if (c_shape != Line) {
+        if (x1 > x2) {
+            swap(&x1, &x2);
+        }
+        if (y1 > y2) {
+            swap(&y1, &y2);
+        }
+    }
+
+    int width = x2 - x1;
+    int height = y2 - y1;
+
 	switch(c_shape){
 		case Line:
 			XDrawLine(XtDisplay(w), XtWindow(w), gc, x1, y1, x2, y2);
 			break;
 		case Rectangle:
-			if (x1 > x2){
-				swap(&x1, &x2);
-			}
-			if (y1 > y2){
-				swap(&y1, &y2);
-			}
-
-			width = x2 - x1;
-			height = y2 - y1;
 			XDrawRectangle(XtDisplay(w), XtWindow(w), gc, x1, y1, width, height);
 			break;
+        case Elipse:
+            XDrawArc(XtDisplay(w), XtWindow(w), gc, x1, y1, width, height, 0, 360*64);
+            break;
 		default:
 			break;
-	}
+    }	
 }
 
 
@@ -79,30 +96,31 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
 /* ARGSUSED */
 void InputLineEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 {
-	Pixel	fg, bg;
+    Pixel	fg, bg;
+    static GC inputGC = 0;			/* GC used for drawing current position */
 
-	if (button_pressed) {
+    if (button_pressed) {
 		if (!inputGC) {
-			inputGC = XCreateGC(XtDisplay(w), XtWindow(w), 0, NULL);
-			XSetFunction(XtDisplay(w), inputGC, GXxor);
-			XSetPlaneMask(XtDisplay(w), inputGC, ~0);
-			XtVaGetValues(w, XmNforeground, &fg, XmNbackground, &bg, NULL);
-			XSetForeground(XtDisplay(w), inputGC, fg ^ bg);
+		    inputGC = XCreateGC(XtDisplay(w), XtWindow(w), 0, NULL);
+		    XSetFunction(XtDisplay(w), inputGC, GXxor);
+		    XSetPlaneMask(XtDisplay(w), inputGC, ~0);
+		    XtVaGetValues(w, XmNforeground, &fg, XmNbackground, &bg, NULL);
+		    XSetForeground(XtDisplay(w), inputGC, fg ^ bg);
 		}
 
 		if (button_pressed > 1) {
-			/* erase previous position */
-			DrawObject(w, inputGC, x1, y1, x2, y2);
+		    /* erase previous position */
+		    DrawObject(w, inputGC, x1, y1, x2, y2);
 		} else {
-			/* remember first MotionNotify */
-			button_pressed = 2;
+		    /* remember first MotionNotify */
+		    button_pressed = 2;
 		}
 
 		x2 = event->xmotion.x;
 		y2 = event->xmotion.y;
 
 		DrawObject(w, inputGC, x1, y1, x2, y2);
-	}
+    }
 }
 
 
@@ -111,48 +129,53 @@ void InputLineEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
  */
 void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
-	Arg al[4];
-	int ac;
-	XGCValues v;
-	XmDrawingAreaCallbackStruct *d = (XmDrawingAreaCallbackStruct*) call_data;
+    Arg al[4];
+    int ac;
+    XGCValues v;
+    XmDrawingAreaCallbackStruct *d = (XmDrawingAreaCallbackStruct*) call_data;
 
-	switch (d->event->type) {
-		case ButtonPress:
-			if (d->event->xbutton.button == Button1) {
-				button_pressed = 1;
-				x1 = d->event->xbutton.x;
-				y1 = d->event->xbutton.y;
-			}
-			break;
+    switch (d->event->type) {
+        case ButtonPress:
+            if (d->event->xbutton.button == Button1) {
+            button_pressed = 1;
+            x1 = d->event->xbutton.x;
+            y1 = d->event->xbutton.y;
+            }
+            break;
 
-		case ButtonRelease:
-			if (d->event->xbutton.button == Button1) {
-				if (++n_object > maxObjects) {
-					maxObjects += LINES_ALLOC_STEP;
-					objects = (XSegment*) XtRealloc((char*)objects,
-													(Cardinal)(sizeof(XSegment) * maxObjects));
-				}
+        case ButtonRelease:
+            if (d->event->xbutton.button == Button1) {
+                if (++n_object > maxObjects) {
+                    maxObjects += LINES_ALLOC_STEP;
+                    objects = (PictureElement *) realloc(objects,
+                      (sizeof(PictureElement) * maxObjects));
+                    if(objects == NULL){
+                        perror("Error: Picture elements realloc error!");
+                        exit(1);
+                    }
+                }
 
-				objects[n_object - 1].x1 = x1;
-				objects[n_object - 1].y1 = y1;
-				objects[n_object - 1].x2 = d->event->xbutton.x;
-				objects[n_object - 1].y2 = d->event->xbutton.y;
+                objects[n_object - 1].shape = c_shape;
+                objects[n_object - 1].x1 = x1;
+                objects[n_object - 1].y1 = y1;
+                objects[n_object - 1].x2 = d->event->xbutton.x;
+                objects[n_object - 1].y2 = d->event->xbutton.y;
 
-				button_pressed = 0;
+                button_pressed = 0;
 
-				if (!drawGC) {
-					ac = 0;
-					XtSetArg(al[ac], XmNforeground, &v.foreground); ac++;
-					XtGetValues(w, al, ac);
-					drawGC = XCreateGC(XtDisplay(w), XtWindow(w),
-									   GCForeground, &v);
-				}
+                if (!drawGC) {
+                    ac = 0;
+                    XtSetArg(al[ac], XmNforeground, &v.foreground); ac++;
+                    XtGetValues(w, al, ac);
+                    drawGC = XCreateGC(XtDisplay(w), XtWindow(w),
+                    GCForeground, &v);
+                }
 
-				DrawObject(w, drawGC, x1, y1, objects[n_object - 1].x2, objects[n_object - 1].y2);
-			}
+                DrawObject(w, drawGC, x1, y1, objects[n_object - 1].x2, objects[n_object - 1].y2);
+            }
 
-			break;
-	}
+            break;
+        }
 }
 
 /*
@@ -161,12 +184,17 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
 /* ARGSUSED */
 void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
+    if (n_object <= 0){
+        return;
+    }
 
-	if (n_object <= 0)
-		return;
-	if (!drawGC)
-		drawGC = XCreateGC(XtDisplay(w), XtWindow(w), 0, NULL);
-	XDrawSegments(XtDisplay(w), XtWindow(w), drawGC, objects, n_object);
+    if (!drawGC){
+        drawGC = XCreateGC(XtDisplay(w), XtWindow(w), 0, NULL);
+    }
+
+    for (int i = 0; i < n_object; i++){
+        DrawObject(w, drawGC, objects[i].x1, objects[i].y1, objects[i].x2, objects[i].y2);
+    }
 }
 
 /*
@@ -174,11 +202,11 @@ void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
  */
 /* ARGSUSED */
 void ClearCB(Widget w, XtPointer client_data, XtPointer call_data)
-{
-	Widget wcd = (Widget) client_data;
+{ 
+    Widget wcd = (Widget) client_data;
 
-	n_object = 0;
-	XClearWindow(XtDisplay(wcd), XtWindow(wcd));
+    n_object = 0;
+    XClearWindow(XtDisplay(wcd), XtWindow(wcd));
 }
 
 /*
@@ -187,49 +215,72 @@ void ClearCB(Widget w, XtPointer client_data, XtPointer call_data)
 /* ARGSUSED */
 void QuitCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
+    exit(0); 
+}
 
-	exit(0);
+void OptionMenuCB(Widget w, XtPointer client_data, XtPointer call_data){
+    if (client_data == 0){
+        ClearCB(w, drawArea, call_data);
+    } else {
+        QuitCB(w, client_data, call_data);
+    }
+}
+
+void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
+{
+    printf("About App\n");
+}
+
+void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
+    int select = (int) client_data;
+
+    switch(select){
+        case 0:
+            c_shape = Line;
+            break;
+        case 1:
+            c_shape = Rectangle;
+            break;
+        case 2:
+            c_shape = Elipse;
+            break;
+        default:
+            break;
+    }
 }
 
 
-int main(int argc, char **argv)
-{
-	XtAppContext app_context;
-	Widget topLevel, mainWin, frame, drawArea, rowColumn, quitBtn, clearBtn;
+void initApp(XtAppContext *app_context, int argc, char* argv[]){
+    Widget topLevel, mainWin, frame, rowColumn, quitBtn, clearBtn;
 
-	/*
-     * Register the default language procedure
-     */
-	XtSetLanguageProc(NULL, (XtLanguageProc)NULL, NULL);
+    topLevel = XtVaAppInitialize(
+            app_context,		 	/* Application context */
+            "Draw",				/* Application class */
+            NULL, 0,				/* command line option list */
+            &argc, argv,			/* command line args */
+            NULL,				/* for missing app-defaults file */
+            NULL);				/* terminate varargs list */
 
-	topLevel = XtVaAppInitialize(
-			&app_context,		 	/* Application context */
-			"Draw",				/* Application class */
-			NULL, 0,				/* command line option list */
-			&argc, argv,			/* command line args */
-			NULL,				/* for missing app-defaults file */
-			NULL);				/* terminate varargs list */
+    mainWin = XtVaCreateManagedWidget(
+            "mainWin",			/* widget name */
+            xmMainWindowWidgetClass,		/* widget class */
+            topLevel,				/* parent widget*/
+            XmNcommandWindowLocation, XmCOMMAND_BELOW_WORKSPACE,
+            NULL);				/* terminate varargs list */
 
-	mainWin = XtVaCreateManagedWidget(
-			"mainWin",			/* widget name */
-			xmMainWindowWidgetClass,		/* widget class */
-			topLevel,				/* parent widget*/
-			XmNcommandWindowLocation, XmCOMMAND_BELOW_WORKSPACE,
-			NULL);				/* terminate varargs list */
+    frame = XtVaCreateManagedWidget(
+            "frame",				/* widget name */
+            xmFrameWidgetClass,		/* widget class */
+            mainWin,				/* parent widget */
+            NULL);				/* terminate varargs list */
 
-	frame = XtVaCreateManagedWidget(
-			"frame",				/* widget name */
-			xmFrameWidgetClass,		/* widget class */
-			mainWin,				/* parent widget */
-			NULL);				/* terminate varargs list */
-
-	drawArea = XtVaCreateManagedWidget(
-			"drawingArea",			/* widget name */
-			xmDrawingAreaWidgetClass,		/* widget class */
-			frame,				/* parent widget*/
-			XmNwidth, 500,			/* set startup width */
-			XmNheight, 400,			/* set startup height */
-			NULL);				/* terminate varargs list */
+    drawArea = XtVaCreateManagedWidget(
+            "drawingArea",			/* widget name */
+            xmDrawingAreaWidgetClass,		/* widget class */
+            frame,				/* parent widget*/
+            XmNwidth, WIDTH,			/* set startup width */
+            XmNheight, HEIGHT,			/* set startup height */
+            NULL);				/* terminate varargs list */
 
 /*
     XSelectInput(XtDisplay(drawArea), XtWindow(drawArea),
@@ -237,40 +288,138 @@ int main(int argc, char **argv)
       | Button1MotionMask );
 */
 
-	rowColumn = XtVaCreateManagedWidget(
-			"rowColumn",			/* widget name */
-			xmRowColumnWidgetClass,		/* widget class */
-			mainWin,				/* parent widget */
-			XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
-			XmNorientation, XmHORIZONTAL,	/* orientation */
-			XmNpacking, XmPACK_COLUMN,	/* packing mode */
-			NULL);				/* terminate varargs list */
+    rowColumn = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            mainWin,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmHORIZONTAL,	/* orientation */
+            XmNpacking, XmPACK_COLUMN,	/* packing mode */
+            NULL);				/* terminate varargs list */
 
-	clearBtn = XtVaCreateManagedWidget(
-			"Clear",				/* widget name */
-			xmPushButtonWidgetClass,		/* widget class */
-			rowColumn,			/* parent widget*/
-			NULL);				/* terminate varargs list */
+//    clearBtn = XtVaCreateManagedWidget(
+//      "Clear",				/* widget name */
+//      xmPushButtonWidgetClass,		/* widget class */
+//      rowColumn,			/* parent widget*/
+//      NULL);				/* terminate varargs list */
+//
+//    quitBtn = XtVaCreateManagedWidget(
+//      "Quit",				/* widget name */
+//      xmPushButtonWidgetClass,		/* widget class */
+//      rowColumn,			/* parent widget*/
+//      NULL);				/* terminate varargs list */
 
-	quitBtn = XtVaCreateManagedWidget(
-			"Quit",				/* widget name */
-			xmPushButtonWidgetClass,		/* widget class */
-			rowColumn,			/* parent widget*/
-			NULL);				/* terminate varargs list */
 
-	XmMainWindowSetAreas(mainWin, NULL, rowColumn, NULL, NULL, frame);
+    XmString file  = XmStringCreateSimple("File");
+    XmString about  = XmStringCreateSimple("About");
+    XmString aboutShortCut = XmStringCreateSimple("Ctrl+A");
+    XmString clear = XmStringCreateSimple("Clear");
+    XmString clearShortCut = XmStringCreateSimple("Ctrl+C");
+    XmString quit = XmStringCreateSimple("Quit");
+    XmString quitShortCut = XmStringCreateSimple("Ctrl+Q");
+    Widget menuBar = XmVaCreateSimpleMenuBar(
+            mainWin,
+            "menuBar",
+            XmVaCASCADEBUTTON, file, XK_F,
+            XmVaCASCADEBUTTON, about, NULL,
+            NULL);
 
-	XtAddCallback(drawArea, XmNinputCallback, DrawObjectCB, drawArea);
-	XtAddEventHandler(drawArea, ButtonMotionMask, False, InputLineEH, NULL);
-	XtAddCallback(drawArea, XmNexposeCallback, ExposeCB, drawArea);
+    Widget fileOptionMenu = XmVaCreateSimplePulldownMenu(
+            menuBar,
+            "fileOptionMenu",
+            0,
+            OptionMenuCB,
+            XmVaPUSHBUTTON, clear, XK_C, "Ctrl<Key>C", clearShortCut,
+            XmVaPUSHBUTTON, quit,  XK_Q, "Ctrl<Key>Q", quitShortCut,
+            NULL);
 
-	XtAddCallback(clearBtn, XmNactivateCallback, ClearCB, drawArea);
-	XtAddCallback(quitBtn, XmNactivateCallback, QuitCB, 0);
+    Widget aboutOptionMenu = XmVaCreateSimplePulldownMenu(
+            menuBar,
+            "aboutOptionMenu",
+            1,
+            AboutMenuCB,
+            XmVaPUSHBUTTON, about, XK_A, "Ctrl<Key>A", aboutShortCut,
+            NULL);
 
-	XtRealizeWidget(topLevel);
 
-	XtAppMainLoop(app_context);
+    // Shapes
+    XmString line = XmStringCreateSimple("Line");
+    XmString rectangle = XmStringCreateSimple("Rectangle");
+    XmString elipse = XmStringCreateSimple("Elipse");
+    Widget shapeLabel = XtVaCreateManagedWidget("Shape", xmLabelWidgetClass, rowColumn, NULL);
 
-	return 0;
+    Widget holderShape = XtVaCreateManagedWidget(
+            "holderShape",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+    Widget shapeRadio = XmVaCreateSimpleRadioBox(
+            holderShape,
+            "widthRadio",
+            WIDTH,
+            shapeRadioCB,
+            XmVaRADIOBUTTON, line, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, rectangle, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, elipse, NULL, NULL, NULL,
+            NULL);
+
+
+    // Widths
+    XmString px_0 = XmStringCreateSimple("0 px");
+    XmString px_3 = XmStringCreateSimple("3 px");
+    XmString px_8 = XmStringCreateSimple("8 px");
+    Widget widthLabel = XtVaCreateManagedWidget("Width", xmLabelWidgetClass, rowColumn, NULL);
+
+    Widget holderWidth = XtVaCreateManagedWidget(
+            "holderWidth",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+    Widget widthRadio = XmVaCreateSimpleRadioBox(
+            holderWidth,
+            "widthRadio",
+            WIDTH,
+            NULL,
+            XmVaRADIOBUTTON, px_0, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, px_3, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, px_8, NULL, NULL, NULL,
+            NULL);
+
+
+
+    XmMainWindowSetAreas(mainWin, NULL, rowColumn, NULL, NULL, frame);
+
+    XtAddCallback(drawArea, XmNinputCallback, DrawObjectCB, drawArea);
+    XtAddEventHandler(drawArea, ButtonMotionMask, False, InputLineEH, NULL);
+    XtAddCallback(drawArea, XmNexposeCallback, ExposeCB, drawArea);
+
+
+//    XtAddCallback(clearBtn, XmNactivateCallback, ClearCB, drawArea);
+//    XtAddCallback(quitBtn, XmNactivateCallback, QuitCB, 0);
+
+    XtRealizeWidget(topLevel);
+
+    XtManageChild(menuBar);
+ //   XtManageChild(aboutBar);
+    XtManageChild(widthRadio);
+    XtManageChild(shapeRadio);
+}
+
+
+int main(int argc, char **argv)
+{
+    XtAppContext app_context;
+
+    /*
+     * Register the default language procedure
+     */
+    XtSetLanguageProc(NULL, (XtLanguageProc)NULL, NULL);
+
+    initApp(&app_context, argc, argv);
+
+
+    XtAppMainLoop(app_context);
+
+    return 0;
 }
 
