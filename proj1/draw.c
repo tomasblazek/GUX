@@ -18,12 +18,16 @@
 #include <Xm/PushB.h>
 #include <Xm/RowColumn.h>
 #include <Xm/Label.h>
+#include <Xm/MessageB.h>
+#include <Xm/Protocols.h>
+
 
 /*
  * Common C library include files
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 /*
  * Shared variables
@@ -33,7 +37,7 @@
 #define WIDTH 500   /* window width */
 #define HEIGHT 400   /* window height */
 
-enum Shape {Line, Rectangle, Elipse} c_shape = Elipse; /* current shape */
+enum Shape {Dot, Line, Rectangle, Elipse} c_shape = Line; /* current shape */
 typedef struct PictureElement{
     enum Shape shape;
     int x1;
@@ -48,6 +52,8 @@ int n_object = 0;			/* current number of objects */
 
 GC drawGC = 0;			/* GC used for final drawing */
 Widget drawArea;
+Widget quitDialog;		    /* Display dialog on application close*/
+
 
 int x1, y1, x2, y2;		/* input points */ 
 int button_pressed = 0;		/* input state */
@@ -62,7 +68,7 @@ void swap(int *a, int *b){
 
 
 void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
-    if (c_shape != Line) {
+    if (c_shape == Rectangle || c_shape == Elipse) {
         if (x1 > x2) {
             swap(&x1, &x2);
         }
@@ -75,6 +81,9 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
     int height = y2 - y1;
 
 	switch(c_shape){
+        case Dot:
+            XDrawPoint(XtDisplay(w), XtWindow(w), gc, x1, y1);
+            break;
 		case Line:
 			XDrawLine(XtDisplay(w), XtWindow(w), gc, x1, y1, x2, y2);
 			break;
@@ -209,20 +218,25 @@ void ClearCB(Widget w, XtPointer client_data, XtPointer call_data)
     XClearWindow(XtDisplay(wcd), XtWindow(wcd));
 }
 
+
+void QuitDialogCB(Widget w, XtPointer client_data, XtPointer call_data){
+    XtManageChild(quitDialog);
+}
+
 /*
  * "Quit" button callback function
  */
 /* ARGSUSED */
 void QuitCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
-    exit(0); 
+    exit(0);
 }
 
 void OptionMenuCB(Widget w, XtPointer client_data, XtPointer call_data){
     if (client_data == 0){
         ClearCB(w, drawArea, call_data);
     } else {
-        QuitCB(w, client_data, call_data);
+        QuitDialogCB(w, client_data, call_data);
     }
 }
 
@@ -232,16 +246,19 @@ void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
 }
 
 void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
-    int select = (int) client_data;
+    intptr_t select = (intptr_t) client_data;
 
     switch(select){
         case 0:
-            c_shape = Line;
+            c_shape = Dot;
             break;
         case 1:
-            c_shape = Rectangle;
+            c_shape = Line;
             break;
         case 2:
+            c_shape = Rectangle;
+            break;
+        case 3:
             c_shape = Elipse;
             break;
         default:
@@ -251,15 +268,20 @@ void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
 
 
 void initApp(XtAppContext *app_context, int argc, char* argv[]){
-    Widget topLevel, mainWin, frame, rowColumn, quitBtn, clearBtn;
+    Widget topLevel, mainWin, frame, rowColumn;
 
     topLevel = XtVaAppInitialize(
             app_context,		 	/* Application context */
             "Draw",				/* Application class */
             NULL, 0,				/* command line option list */
-            &argc, argv,			/* command line args */
-            NULL,				/* for missing app-defaults file */
+            &argc, argv,
+            NULL,/* command line args */
+            XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
             NULL);				/* terminate varargs list */
+
+    Atom windowExit = XInternAtom(XtDisplay(topLevel), "WM_DELETE_WINDOW", False);
+    XmAddWMProtocolCallback(topLevel, windowExit, QuitDialogCB, NULL);
+    XmActivateWMProtocol(topLevel, windowExit);
 
     mainWin = XtVaCreateManagedWidget(
             "mainWin",			/* widget name */
@@ -297,34 +319,24 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmNpacking, XmPACK_COLUMN,	/* packing mode */
             NULL);				/* terminate varargs list */
 
-//    clearBtn = XtVaCreateManagedWidget(
-//      "Clear",				/* widget name */
-//      xmPushButtonWidgetClass,		/* widget class */
-//      rowColumn,			/* parent widget*/
-//      NULL);				/* terminate varargs list */
-//
-//    quitBtn = XtVaCreateManagedWidget(
-//      "Quit",				/* widget name */
-//      xmPushButtonWidgetClass,		/* widget class */
-//      rowColumn,			/* parent widget*/
-//      NULL);				/* terminate varargs list */
 
-
+    // Menu bar
     XmString file  = XmStringCreateSimple("File");
-    XmString about  = XmStringCreateSimple("About");
-    XmString aboutShortCut = XmStringCreateSimple("Ctrl+A");
     XmString clear = XmStringCreateSimple("Clear");
     XmString clearShortCut = XmStringCreateSimple("Ctrl+C");
     XmString quit = XmStringCreateSimple("Quit");
     XmString quitShortCut = XmStringCreateSimple("Ctrl+Q");
+    XmString about  = XmStringCreateSimple("About");
+    XmString help = XmStringCreateSimple("Help");
+    XmString helpShortCut = XmStringCreateSimple("Ctrl+H");
     Widget menuBar = XmVaCreateSimpleMenuBar(
             mainWin,
             "menuBar",
-            XmVaCASCADEBUTTON, file, XK_F,
+            XmVaCASCADEBUTTON, file, NULL,
             XmVaCASCADEBUTTON, about, NULL,
             NULL);
 
-    Widget fileOptionMenu = XmVaCreateSimplePulldownMenu(
+    XmVaCreateSimplePulldownMenu(
             menuBar,
             "fileOptionMenu",
             0,
@@ -333,20 +345,49 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmVaPUSHBUTTON, quit,  XK_Q, "Ctrl<Key>Q", quitShortCut,
             NULL);
 
-    Widget aboutOptionMenu = XmVaCreateSimplePulldownMenu(
+    XmVaCreateSimplePulldownMenu(
             menuBar,
             "aboutOptionMenu",
             1,
             AboutMenuCB,
-            XmVaPUSHBUTTON, about, XK_A, "Ctrl<Key>A", aboutShortCut,
+            XmVaPUSHBUTTON, help, XK_H, "Ctrl<Key>A", helpShortCut,
             NULL);
 
+    XmStringFree(file);
+    XmStringFree(clear);
+    XmStringFree(clearShortCut);
+    XmStringFree(quit);
+    XmStringFree(quitShortCut);
+    XmStringFree(about);
+    XmStringFree(help);
+    XmStringFree(helpShortCut);
 
-    // Shapes
+
+    // Dialog window
+    XmString quitMessage = XmStringCreateSimple("Quit application?");
+    XmString quitYes = XmStringCreateSimple("Yes");
+    XmString quitNo = XmStringCreateSimple("No");
+
+    quitDialog = XmCreateQuestionDialog(topLevel, "close", NULL, 0);
+    XtVaSetValues(quitDialog,
+                  XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL,
+                  XmNmessageString, quitMessage,
+                  XmNokLabelString, quitYes,
+                  XmNcancelLabelString, quitNo,
+                  NULL);
+
+    XmStringFree(quitMessage);
+    XmStringFree(quitYes);
+    XmStringFree(quitNo);
+
+    XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
+    
+    // Select Shapes
+    XmString dot = XmStringCreateSimple("Dot");
     XmString line = XmStringCreateSimple("Line");
     XmString rectangle = XmStringCreateSimple("Rectangle");
     XmString elipse = XmStringCreateSimple("Elipse");
-    Widget shapeLabel = XtVaCreateManagedWidget("Shape", xmLabelWidgetClass, rowColumn, NULL);
+    XtVaCreateManagedWidget("Shape", xmLabelWidgetClass, rowColumn, NULL);
 
     Widget holderShape = XtVaCreateManagedWidget(
             "holderShape",
@@ -358,17 +399,22 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             "widthRadio",
             WIDTH,
             shapeRadioCB,
+            XmVaRADIOBUTTON, dot, NULL, NULL, NULL,
             XmVaRADIOBUTTON, line, NULL, NULL, NULL,
             XmVaRADIOBUTTON, rectangle, NULL, NULL, NULL,
             XmVaRADIOBUTTON, elipse, NULL, NULL, NULL,
             NULL);
 
+    XmStringFree(dot);
+    XmStringFree(line);
+    XmStringFree(rectangle);
+    XmStringFree(elipse);
 
-    // Widths
+    // Select Widths
     XmString px_0 = XmStringCreateSimple("0 px");
     XmString px_3 = XmStringCreateSimple("3 px");
     XmString px_8 = XmStringCreateSimple("8 px");
-    Widget widthLabel = XtVaCreateManagedWidget("Width", xmLabelWidgetClass, rowColumn, NULL);
+    XtVaCreateManagedWidget("Width", xmLabelWidgetClass, rowColumn, NULL);
 
     Widget holderWidth = XtVaCreateManagedWidget(
             "holderWidth",
@@ -385,7 +431,11 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmVaRADIOBUTTON, px_8, NULL, NULL, NULL,
             NULL);
 
+    XmStringFree(px_0);
+    XmStringFree(px_3);
+    XmStringFree(px_8);
 
+    // Set rest of callbacks and manage created Widgets
 
     XmMainWindowSetAreas(mainWin, NULL, rowColumn, NULL, NULL, frame);
 
@@ -394,13 +444,9 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XtAddCallback(drawArea, XmNexposeCallback, ExposeCB, drawArea);
 
 
-//    XtAddCallback(clearBtn, XmNactivateCallback, ClearCB, drawArea);
-//    XtAddCallback(quitBtn, XmNactivateCallback, QuitCB, 0);
-
     XtRealizeWidget(topLevel);
 
     XtManageChild(menuBar);
- //   XtManageChild(aboutBar);
     XtManageChild(widthRadio);
     XtManageChild(shapeRadio);
 }
