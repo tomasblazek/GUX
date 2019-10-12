@@ -34,12 +34,25 @@
  */
 
 #define LINES_ALLOC_STEP	10	/* memory allocation stepping */
-#define WIDTH 500   /* window width */
-#define HEIGHT 400   /* window height */
+#define MIN_WIDTH 700   /* window width */
+#define MIN_HEIGHT 400   /* window height */
+#define NUM_COLORS 5
 
 enum Shape {Dot, Line, Rectangle, Elipse} c_shape = Line; /* current shape */
+String names[NUM_COLORS] = {"Black", "White", "Red", "Green", "Blue"};
+Pixel colors[NUM_COLORS];
+
+Pixel cbg_color; /* current color of line */
+Pixel cfg_color;
+unsigned c_thickness = 0; /* current thickness of line */
+int c_style = LineDoubleDash; /* current style of line */
+Boolean filled = False;
+
 typedef struct PictureElement{
     enum Shape shape;
+    unsigned int thickness;
+    int style;
+    int color;
     int x1;
     int y1;
     int x2;
@@ -67,31 +80,46 @@ void swap(int *a, int *b){
 }
 
 
-void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
-    if (c_shape == Rectangle || c_shape == Elipse) {
-        if (x1 > x2) {
-            swap(&x1, &x2);
-        }
-        if (y1 > y2) {
-            swap(&y1, &y2);
-        }
-    }
+void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shape, unsigned int thickness, int style){
+    Display *display = XtDisplay(w);
+    Window window = XtWindow(w);
+    int dx = abs(x1-x2);
+    int dy = abs(y1-y2);
 
-    int width = x2 - x1;
-    int height = y2 - y1;
+    XSetForeground(display, gc, colors[2]);
+    XSetBackground(display, gc, colors[3]);
 
-	switch(c_shape){
+    XSetLineAttributes(display, gc, thickness, style, 0, 0);
+    switch(shape){
         case Dot:
-            XDrawPoint(XtDisplay(w), XtWindow(w), gc, x1, y1);
+            if (thickness == 0){
+                XDrawPoint(display, window, gc, x1, y1);
+            } else {
+                XDrawArc(display, window, gc, x1, y1, thickness, thickness, 0, 360*64);
+            }
             break;
 		case Line:
-			XDrawLine(XtDisplay(w), XtWindow(w), gc, x1, y1, x2, y2);
+			XDrawLine(display, window, gc, x1, y1, x2, y2);
 			break;
 		case Rectangle:
-			XDrawRectangle(XtDisplay(w), XtWindow(w), gc, x1, y1, width, height);
+            if (x1 > x2) {
+                swap(&x1, &x2);
+            }
+            if (y1 > y2) {
+                swap(&y1, &y2);
+            }
+            unsigned int width = (unsigned int) x2 - x1; // always positive because of swap
+            unsigned int height = (unsigned int) y2 - y1;
+            if (filled) {
+                XFillRectangle(display, window, gc, x1, y1, width, height);
+            }
+			XDrawRectangle(display, window, gc, x1, y1, width, height);
 			break;
         case Elipse:
-            XDrawArc(XtDisplay(w), XtWindow(w), gc, x1, y1, width, height, 0, 360*64);
+            if (filled) {
+                XFillArc(display, window, gc, x1-dx, y1-dy, 2*(unsigned)dx, 2*(unsigned)dy, 0, 360*64);
+            }
+            XDrawArc(display, window, gc, x1-dx, y1-dy, 2*(unsigned)dx, 2*(unsigned)dy, 0, 360*64);
             break;
 		default:
 			break;
@@ -103,7 +131,7 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2){
  * "InputLine" event handler
  */
 /* ARGSUSED */
-void InputLineEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
+void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 {
     Pixel	fg, bg;
     static GC inputGC = 0;			/* GC used for drawing current position */
@@ -119,7 +147,7 @@ void InputLineEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 
 		if (button_pressed > 1) {
 		    /* erase previous position */
-		    DrawObject(w, inputGC, x1, y1, x2, y2);
+		    DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style);
 		} else {
 		    /* remember first MotionNotify */
 		    button_pressed = 2;
@@ -128,7 +156,7 @@ void InputLineEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 		x2 = event->xmotion.x;
 		y2 = event->xmotion.y;
 
-		DrawObject(w, inputGC, x1, y1, x2, y2);
+		DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style);
     }
 }
 
@@ -165,6 +193,8 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
                 }
 
                 objects[n_object - 1].shape = c_shape;
+                objects[n_object - 1].thickness = c_thickness;
+                objects[n_object - 1].style = c_style;
                 objects[n_object - 1].x1 = x1;
                 objects[n_object - 1].y1 = y1;
                 objects[n_object - 1].x2 = d->event->xbutton.x;
@@ -180,7 +210,8 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
                     GCForeground, &v);
                 }
 
-                DrawObject(w, drawGC, x1, y1, objects[n_object - 1].x2, objects[n_object - 1].y2);
+                DrawObject(w, drawGC, x1, y1, objects[n_object - 1].x2, objects[n_object - 1].y2,
+                           objects[n_object - 1].shape, objects[n_object - 1].thickness, objects[n_object - 1].style);
             }
 
             break;
@@ -202,8 +233,14 @@ void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
     }
 
     for (int i = 0; i < n_object; i++){
-        DrawObject(w, drawGC, objects[i].x1, objects[i].y1, objects[i].x2, objects[i].y2);
+        DrawObject(w, drawGC, objects[i].x1, objects[i].y1, objects[i].x2, objects[i].y2,
+                   objects[i].shape, objects[i].thickness, objects[i].style);
     }
+}
+
+void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
+{
+    printf("About App\n");
 }
 
 /*
@@ -240,10 +277,23 @@ void OptionMenuCB(Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
-void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
-{
-    printf("About App\n");
+void thicknessRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
+    intptr_t thickness = (intptr_t)  client_data;
+
+    switch(thickness){
+        case 0:
+            c_thickness = 0;
+            break;
+        case 1:
+            c_thickness = 3;
+            break;
+        case 2:
+            c_thickness = 8;
+        default:
+            break;
+    }
 }
+
 
 void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t select = (intptr_t) client_data;
@@ -267,6 +317,51 @@ void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
 }
 
 
+void initColors(Widget w, Pixel *color, int nColors){
+    char *cName;
+    XColor xColor, spare;
+
+    Colormap cmap = DefaultColormapOfScreen(XtScreen(w));
+
+    for (int i = 0; i < nColors; i++) {
+        cName = names[i];
+        if (XAllocNamedColor(XtDisplay(w), cmap, cName, &xColor, &spare) == 0) {
+            fprintf(stderr, "Error: Cannot allocate colormap entry"
+                    " for \"%s\"\n", cName);
+            exit(1);
+        }
+        colors[i] = xColor.pixel;
+    }
+
+    cbg_color = colors[nColors - 1];
+    cfg_color = colors[0];
+}
+
+void colorRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
+    intptr_t select = (intptr_t) client_data;
+
+}
+
+void fillRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
+    intptr_t select = (intptr_t) client_data;
+
+    if (select == 0){
+        filled = False;
+    } else {
+        filled = True;
+    }
+}
+
+void lineStyleRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
+    intptr_t select = (intptr_t) client_data;
+
+    if (select == 0){
+        c_style = LineSolid;
+    } else {
+        c_style = LineDoubleDash;
+    }
+}
+
 void initApp(XtAppContext *app_context, int argc, char* argv[]){
     Widget topLevel, mainWin, frame, rowColumn;
 
@@ -277,6 +372,8 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             &argc, argv,
             NULL,/* command line args */
             XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
+            XmNminWidth, MIN_WIDTH,
+            XmNminHeight, MIN_HEIGHT,
             NULL);				/* terminate varargs list */
 
     Atom windowExit = XInternAtom(XtDisplay(topLevel), "WM_DELETE_WINDOW", False);
@@ -300,8 +397,6 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             "drawingArea",			/* widget name */
             xmDrawingAreaWidgetClass,		/* widget class */
             frame,				/* parent widget*/
-            XmNwidth, WIDTH,			/* set startup width */
-            XmNheight, HEIGHT,			/* set startup height */
             NULL);				/* terminate varargs list */
 
 /*
@@ -309,11 +404,16 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
       KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask
       | Button1MotionMask );
 */
+    Widget tools = XtVaCreateManagedWidget(
+            "Command window",			/* widget name */
+            xmRowColumnWidgetClass,			/* widget class */
+            mainWin,				/* parent widget */
+            NULL);
 
     rowColumn = XtVaCreateManagedWidget(
             "rowColumn",			/* widget name */
             xmRowColumnWidgetClass,		/* widget class */
-            mainWin,				/* parent widget */
+            tools,				/* parent widget */
             XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
             XmNorientation, XmHORIZONTAL,	/* orientation */
             XmNpacking, XmPACK_COLUMN,	/* packing mode */
@@ -362,6 +462,193 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XmStringFree(help);
     XmStringFree(helpShortCut);
 
+    // Select Shapes
+    XmString dot = XmStringCreateSimple("Dot");
+    XmString line = XmStringCreateSimple("Line");
+    XmString rectangle = XmStringCreateSimple("Rectangle");
+    XmString elipse = XmStringCreateSimple("Elipse");
+
+    Widget holderShape = XtVaCreateManagedWidget(
+            "holderShape",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnShape = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderShape,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Shape", xmLabelWidgetClass, rowColumnShape, NULL);
+
+    Widget shapeRadio = XmVaCreateSimpleRadioBox(
+            rowColumnShape,
+            "widthRadio",
+            0,
+            shapeRadioCB,
+            XmVaRADIOBUTTON, dot, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, line, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, rectangle, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, elipse, NULL, NULL, NULL,
+            NULL);
+
+    XmStringFree(dot);
+    XmStringFree(line);
+    XmStringFree(rectangle);
+    XmStringFree(elipse);
+
+    // Select Widths
+    XmString px_0 = XmStringCreateSimple("0 px");
+    XmString px_3 = XmStringCreateSimple("3 px");
+    XmString px_8 = XmStringCreateSimple("8 px");
+
+    Widget holderThickness = XtVaCreateManagedWidget(
+            "holderThickness",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnThickness = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderThickness,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Thickness", xmLabelWidgetClass, rowColumnThickness, NULL);
+
+    Widget thicknessRadio = XmVaCreateSimpleRadioBox(
+            rowColumnThickness,
+            "thicknessRadio",
+            0,
+            thicknessRadioCB,
+            XmVaRADIOBUTTON, px_0, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, px_3, NULL, NULL, NULL,
+            XmVaRADIOBUTTON, px_8, NULL, NULL, NULL,
+            NULL);
+
+    XmStringFree(px_0);
+    XmStringFree(px_3);
+    XmStringFree(px_8);
+
+    // Select Color
+    initColors(topLevel, colors, NUM_COLORS);
+
+    XmString black = XmStringCreateSimple(names[0]);
+    XmString white = XmStringCreateSimple(names[1]);
+    XmString red = XmStringCreateSimple(names[2]);
+    XmString green = XmStringCreateSimple(names[3]);
+    XmString blue = XmStringCreateSimple(names[4]);
+
+    Widget holderColor = XtVaCreateManagedWidget(
+            "holderColor",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnColor = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderColor,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Color", xmLabelWidgetClass, rowColumnColor, NULL);
+
+    Widget colorRadio = XmVaCreateSimpleRadioBox(
+            rowColumnColor,
+            "colorRadio",
+            0,
+            colorRadioCB,
+            XmVaRADIOBUTTON, black, 'k', NULL, NULL,
+            XmVaRADIOBUTTON, white, 'W', NULL, NULL,
+            XmVaRADIOBUTTON, red, 'R', NULL, NULL,
+            XmVaRADIOBUTTON, green, 'G', NULL, NULL,
+            XmVaRADIOBUTTON, blue, 'B', NULL, NULL,
+            NULL);
+
+    XmStringFree(black);
+    XmStringFree(white);
+    XmStringFree(red);
+    XmStringFree(green);
+    XmStringFree(blue);
+
+    // Fill setting
+    XmString empty = XmStringCreateSimple("Empty");
+    XmString fill = XmStringCreateSimple("Fill");
+    Widget holderFill = XtVaCreateManagedWidget(
+            "holderFill",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnFill = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderFill,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Filling", xmLabelWidgetClass, rowColumnFill, NULL);
+
+    Widget fillRadio = XmVaCreateSimpleRadioBox(
+            rowColumnFill,
+            "fillRadio",
+            0,
+            fillRadioCB,
+            XmVaRADIOBUTTON, empty, 'k', NULL, NULL,
+            XmVaRADIOBUTTON, fill, 'W', NULL, NULL,
+            NULL);
+
+
+    XmStringFree(empty);
+    XmStringFree(fill);
+
+    // Dash style
+    // Fill setting
+
+    XmString solid = XmStringCreateSimple("Solid");
+    XmString doubleDash = XmStringCreateSimple("DoubleDash");
+    Widget holderLineStyle = XtVaCreateManagedWidget(
+            "holderLineStyle",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnLineStyle = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderLineStyle,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Line style", xmLabelWidgetClass, rowColumnLineStyle, NULL);
+
+    Widget lineStyleRadio = XmVaCreateSimpleRadioBox(
+            rowColumnLineStyle,
+            "lineStyleRadio",
+            0,
+            lineStyleRadioCB,
+            XmVaRADIOBUTTON, solid, 'k', NULL, NULL,
+            XmVaRADIOBUTTON, doubleDash, 'W', NULL, NULL,
+            NULL);
+
+
+    XmStringFree(solid);
+    XmStringFree(doubleDash);
+
 
     // Dialog window
     XmString quitMessage = XmStringCreateSimple("Quit application?");
@@ -381,74 +668,24 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XmStringFree(quitNo);
 
     XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
-    
-    // Select Shapes
-    XmString dot = XmStringCreateSimple("Dot");
-    XmString line = XmStringCreateSimple("Line");
-    XmString rectangle = XmStringCreateSimple("Rectangle");
-    XmString elipse = XmStringCreateSimple("Elipse");
-    XtVaCreateManagedWidget("Shape", xmLabelWidgetClass, rowColumn, NULL);
-
-    Widget holderShape = XtVaCreateManagedWidget(
-            "holderShape",
-            xmFrameWidgetClass,
-            rowColumn,
-            NULL);
-    Widget shapeRadio = XmVaCreateSimpleRadioBox(
-            holderShape,
-            "widthRadio",
-            WIDTH,
-            shapeRadioCB,
-            XmVaRADIOBUTTON, dot, NULL, NULL, NULL,
-            XmVaRADIOBUTTON, line, NULL, NULL, NULL,
-            XmVaRADIOBUTTON, rectangle, NULL, NULL, NULL,
-            XmVaRADIOBUTTON, elipse, NULL, NULL, NULL,
-            NULL);
-
-    XmStringFree(dot);
-    XmStringFree(line);
-    XmStringFree(rectangle);
-    XmStringFree(elipse);
-
-    // Select Widths
-    XmString px_0 = XmStringCreateSimple("0 px");
-    XmString px_3 = XmStringCreateSimple("3 px");
-    XmString px_8 = XmStringCreateSimple("8 px");
-    XtVaCreateManagedWidget("Width", xmLabelWidgetClass, rowColumn, NULL);
-
-    Widget holderWidth = XtVaCreateManagedWidget(
-            "holderWidth",
-            xmFrameWidgetClass,
-            rowColumn,
-            NULL);
-    Widget widthRadio = XmVaCreateSimpleRadioBox(
-            holderWidth,
-            "widthRadio",
-            WIDTH,
-            NULL,
-            XmVaRADIOBUTTON, px_0, NULL, NULL, NULL,
-            XmVaRADIOBUTTON, px_3, NULL, NULL, NULL,
-            XmVaRADIOBUTTON, px_8, NULL, NULL, NULL,
-            NULL);
-
-    XmStringFree(px_0);
-    XmStringFree(px_3);
-    XmStringFree(px_8);
 
     // Set rest of callbacks and manage created Widgets
 
-    XmMainWindowSetAreas(mainWin, NULL, rowColumn, NULL, NULL, frame);
+    XmMainWindowSetAreas(mainWin, NULL, tools, NULL, NULL, frame);
 
     XtAddCallback(drawArea, XmNinputCallback, DrawObjectCB, drawArea);
-    XtAddEventHandler(drawArea, ButtonMotionMask, False, InputLineEH, NULL);
+    XtAddEventHandler(drawArea, ButtonMotionMask, False, InputObjectEH, NULL);
     XtAddCallback(drawArea, XmNexposeCallback, ExposeCB, drawArea);
 
 
     XtRealizeWidget(topLevel);
 
     XtManageChild(menuBar);
-    XtManageChild(widthRadio);
+    XtManageChild(thicknessRadio);
     XtManageChild(shapeRadio);
+    XtManageChild(colorRadio);
+    XtManageChild(fillRadio);
+    XtManageChild(lineStyleRadio);
 }
 
 
