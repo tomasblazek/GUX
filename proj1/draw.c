@@ -34,7 +34,7 @@
  */
 
 #define LINES_ALLOC_STEP	10	/* memory allocation stepping */
-#define MIN_WIDTH 700   /* window width */
+#define MIN_WIDTH 635   /* window width */
 #define MIN_HEIGHT 400   /* window height */
 #define NUM_COLORS 5
 
@@ -52,7 +52,8 @@ typedef struct PictureElement{
     enum Shape shape;
     unsigned int thickness;
     int style;
-    int color;
+    Pixel fgColor;
+    Pixel bgColor;
     int x1;
     int y1;
     int x2;
@@ -80,14 +81,16 @@ void swap(int *a, int *b){
 }
 
 
-void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shape, unsigned int thickness, int style){
+void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shape, unsigned int thickness, int style,
+                Pixel fgColor, Pixel bgColor) {
+
     Display *display = XtDisplay(w);
     Window window = XtWindow(w);
-    int dx = abs(x1-x2);
-    int dy = abs(y1-y2);
+    int dx = abs(x1 - x2);
+    int dy = abs(y1 - y2);
 
-    XSetForeground(display, gc, colors[2]);
-    XSetBackground(display, gc, colors[3]);
+    XSetForeground(display, gc, fgColor);
+    XSetBackground(display, gc, bgColor);
 
     XSetLineAttributes(display, gc, thickness, style, 0, 0);
     switch(shape){
@@ -142,12 +145,13 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
 		    XSetFunction(XtDisplay(w), inputGC, GXxor);
 		    XSetPlaneMask(XtDisplay(w), inputGC, ~0);
 		    XtVaGetValues(w, XmNforeground, &fg, XmNbackground, &bg, NULL);
-		    XSetForeground(XtDisplay(w), inputGC, fg ^ bg);
-		}
+		    XSetForeground(XtDisplay(w), inputGC, bg ^ fg);
+            XSetBackground(XtDisplay(w), inputGC, bg);
+        }
 
 		if (button_pressed > 1) {
 		    /* erase previous position */
-		    DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style);
+		    DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style, cfg_color, cbg_color);
 		} else {
 		    /* remember first MotionNotify */
 		    button_pressed = 2;
@@ -156,7 +160,7 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
 		x2 = event->xmotion.x;
 		y2 = event->xmotion.y;
 
-		DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style);
+		DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style, cfg_color, cbg_color);
     }
 }
 
@@ -195,6 +199,9 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
                 objects[n_object - 1].shape = c_shape;
                 objects[n_object - 1].thickness = c_thickness;
                 objects[n_object - 1].style = c_style;
+                objects[n_object - 1].fgColor = cfg_color;
+                objects[n_object - 1].bgColor = cbg_color;
+
                 objects[n_object - 1].x1 = x1;
                 objects[n_object - 1].y1 = y1;
                 objects[n_object - 1].x2 = d->event->xbutton.x;
@@ -211,7 +218,7 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
                 }
 
                 DrawObject(w, drawGC, x1, y1, objects[n_object - 1].x2, objects[n_object - 1].y2,
-                           objects[n_object - 1].shape, objects[n_object - 1].thickness, objects[n_object - 1].style);
+                           c_shape, c_thickness, c_style, cfg_color, cbg_color);
             }
 
             break;
@@ -234,7 +241,8 @@ void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
 
     for (int i = 0; i < n_object; i++){
         DrawObject(w, drawGC, objects[i].x1, objects[i].y1, objects[i].x2, objects[i].y2,
-                   objects[i].shape, objects[i].thickness, objects[i].style);
+                   objects[i].shape, objects[i].thickness, objects[i].style, objects[i].fgColor,
+                   objects[i].bgColor);
     }
 }
 
@@ -333,7 +341,7 @@ void initColors(Widget w, Pixel *color, int nColors){
         colors[i] = xColor.pixel;
     }
 
-    cbg_color = colors[nColors - 1];
+    cbg_color = colors[1];
     cfg_color = colors[0];
 }
 
@@ -360,6 +368,18 @@ void lineStyleRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     } else {
         c_style = LineDoubleDash;
     }
+}
+
+void fgColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
+    intptr_t select = (intptr_t) client_data;
+
+    cfg_color = colors[select];
+}
+
+void bgColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
+    intptr_t select = (intptr_t) client_data;
+
+    cbg_color = colors[select];
 }
 
 void initApp(XtAppContext *app_context, int argc, char* argv[]){
@@ -546,28 +566,57 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XmString green = XmStringCreateSimple(names[3]);
     XmString blue = XmStringCreateSimple(names[4]);
 
-    Widget holderColor = XtVaCreateManagedWidget(
-            "holderColor",
+    Widget holderFGColor = XtVaCreateManagedWidget(
+            "holderFGColor",
             xmFrameWidgetClass,
             rowColumn,
             NULL);
 
-    Widget rowColumnColor = XtVaCreateManagedWidget(
+    Widget rowColumnFGColor = XtVaCreateManagedWidget(
             "rowColumn",			/* widget name */
             xmRowColumnWidgetClass,		/* widget class */
-            holderColor,				/* parent widget */
+            holderFGColor,				/* parent widget */
             XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
             XmNorientation, XmVERTICAL,	/* orientation */
             XmNpacking, XmPACK_TIGHT,	/* packing mode */
             NULL);
 
-    XtVaCreateManagedWidget("Color", xmLabelWidgetClass, rowColumnColor, NULL);
+    XtVaCreateManagedWidget("FG Color", xmLabelWidgetClass, rowColumnFGColor, NULL);
 
-    Widget colorRadio = XmVaCreateSimpleRadioBox(
-            rowColumnColor,
-            "colorRadio",
+    Widget fgColorRadio = XmVaCreateSimpleRadioBox(
+            rowColumnFGColor,
+            "colorFGRadio",
             0,
-            colorRadioCB,
+            fgColorRadioCB,
+            XmVaRADIOBUTTON, black, 'k', NULL, NULL,
+            XmVaRADIOBUTTON, white, 'W', NULL, NULL,
+            XmVaRADIOBUTTON, red, 'R', NULL, NULL,
+            XmVaRADIOBUTTON, green, 'G', NULL, NULL,
+            XmVaRADIOBUTTON, blue, 'B', NULL, NULL,
+            NULL);
+
+    Widget holderBGColor = XtVaCreateManagedWidget(
+            "holderBGColor",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnBGColor = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderBGColor,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("BG Color", xmLabelWidgetClass, rowColumnBGColor, NULL);
+
+    Widget bgColorRadio = XmVaCreateSimpleRadioBox(
+            rowColumnBGColor,
+            "colorBGRadio",
+            0,
+            bgColorRadioCB,
             XmVaRADIOBUTTON, black, 'k', NULL, NULL,
             XmVaRADIOBUTTON, white, 'W', NULL, NULL,
             XmVaRADIOBUTTON, red, 'R', NULL, NULL,
@@ -683,7 +732,8 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XtManageChild(menuBar);
     XtManageChild(thicknessRadio);
     XtManageChild(shapeRadio);
-    XtManageChild(colorRadio);
+    XtManageChild(fgColorRadio);
+    XtManageChild(bgColorRadio);
     XtManageChild(fillRadio);
     XtManageChild(lineStyleRadio);
 }
