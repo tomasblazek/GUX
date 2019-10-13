@@ -745,23 +745,23 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
 
 
     // Dialog window
-//    XmString quitMessage = XmStringCreateSimple("Quit application?");
-//    XmString quitYes = XmStringCreateSimple("Yes");
-//    XmString quitNo = XmStringCreateSimple("No");
-//
-//    quitDialog = XmCreateQuestionDialog(topLevel, "close", NULL, 0);
-//    XtVaSetValues(quitDialog,
-//                  XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL,
-//                  XmNmessageString, quitMessage,
-//                  XmNokLabelString, quitYes,
-//                  XmNcancelLabelString, quitNo,
-//                  NULL);
-//
-//    XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
-//
-//    XmStringFree(quitMessage);
-//    XmStringFree(quitYes);
-//    XmStringFree(quitNo);
+    XmString quitMessage = XmStringCreateSimple("Quit application?");
+    XmString quitYes = XmStringCreateSimple("Yes");
+    XmString quitNo = XmStringCreateSimple("No");
+
+    quitDialog = XmCreateQuestionDialog(topLevel, "close", NULL, 0);
+    XtVaSetValues(quitDialog,
+                  XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL,
+                  XmNmessageString, quitMessage,
+                  XmNokLabelString, quitYes,
+                  XmNcancelLabelString, quitNo,
+                  NULL);
+
+    XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
+
+    XmStringFree(quitMessage);
+    XmStringFree(quitYes);
+    XmStringFree(quitNo);
 
 
     Widget shell = XtVaCreateWidget("dialog_shell",
