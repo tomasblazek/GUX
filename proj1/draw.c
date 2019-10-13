@@ -404,7 +404,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             NULL, 0,				/* command line option list */
             &argc, argv,
             NULL,/* command line args */
-            //XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
+            XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
             XmNminWidth, MIN_WIDTH,
             XmNminHeight, MIN_HEIGHT,
             NULL);				/* terminate varargs list */
