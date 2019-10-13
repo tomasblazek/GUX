@@ -20,6 +20,7 @@
 #include <Xm/Label.h>
 #include <Xm/MessageB.h>
 #include <Xm/Protocols.h>
+#include <Xm/DialogS.h> /* OSF/Motif message box widget */
 
 
 /*
@@ -62,14 +63,14 @@ typedef struct PictureElement{
     int y2;
 } PictureElement;
 
-PictureElement *objects = NULL; /* array of objects */
+PictureElement *objects; /* array of objects */
 int maxObjects = 0;		/* space allocated for max objects */
 int n_object = 0;			/* current number of objects */
 
 GC drawGC = 0;			/* GC used for final drawing */
 Widget drawArea;
 Widget quitDialog;		    /* Display dialog on application close*/
-
+Widget helpDialog;
 
 int x1, y1, x2, y2;		/* input points */ 
 int button_pressed = 0;		/* input state */
@@ -151,7 +152,7 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
 		    XSetFunction(XtDisplay(w), inputGC, GXinvert);
 		    XSetPlaneMask(XtDisplay(w), inputGC, ~0);
 		    XtVaGetValues(w, XmNforeground, &fg, XmNbackground, &bg, NULL);
-		    XSetForeground(XtDisplay(w), inputGC, bg ^ fg);
+		    //XSetForeground(XtDisplay(w), inputGC, bg ^ fg);
         }
 
 		if (button_pressed > 1) {
@@ -255,7 +256,7 @@ void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
 
 void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
-    printf("About App\n");
+    XtManageChild(helpDialog);
 }
 
 /*
@@ -279,8 +280,10 @@ void QuitDialogCB(Widget w, XtPointer client_data, XtPointer call_data){
  * "Quit" button callback function
  */
 /* ARGSUSED */
-void QuitCB(Widget w, XtPointer client_data, XtPointer call_data)
-{
+void QuitCB(Widget w, XtPointer client_data, XtPointer call_data) {
+    if (objects != NULL) {
+        free(objects);
+    }
     exit(0);
 }
 
@@ -352,11 +355,6 @@ void initColors(Widget w, Pixel *color, int nColors){
     cfg_color = colors[0];
 }
 
-void colorRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
-    intptr_t select = (intptr_t) client_data;
-
-}
-
 void fillRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t select = (intptr_t) client_data;
 
@@ -397,7 +395,6 @@ void fillColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
 }
 
 
-
 void initApp(XtAppContext *app_context, int argc, char* argv[]){
     Widget topLevel, mainWin, frame, rowColumn;
 
@@ -407,7 +404,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             NULL, 0,				/* command line option list */
             &argc, argv,
             NULL,/* command line args */
-            XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
+            //XmNdeleteResponse, XmDO_NOTHING,    /* for missing app-defaults file */
             XmNminWidth, MIN_WIDTH,
             XmNminHeight, MIN_HEIGHT,
             NULL);				/* terminate varargs list */
@@ -486,7 +483,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             "aboutOptionMenu",
             1,
             AboutMenuCB,
-            XmVaPUSHBUTTON, help, XK_H, "Ctrl<Key>A", helpShortCut,
+            XmVaPUSHBUTTON, help, XK_H, "Ctrl<Key>H", helpShortCut,
             NULL);
 
     XmStringFree(file);
@@ -690,7 +687,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmNpacking, XmPACK_TIGHT,	/* packing mode */
             NULL);
 
-    XtVaCreateManagedWidget("FG Color", xmLabelWidgetClass, rowColumnFillColor, NULL);
+    XtVaCreateManagedWidget("Filling Color", xmLabelWidgetClass, rowColumnFillColor, NULL);
 
     Widget fillColorRadio = XmVaCreateSimpleRadioBox(
             rowColumnFillColor,
@@ -748,23 +745,48 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
 
 
     // Dialog window
-    XmString quitMessage = XmStringCreateSimple("Quit application?");
-    XmString quitYes = XmStringCreateSimple("Yes");
-    XmString quitNo = XmStringCreateSimple("No");
+//    XmString quitMessage = XmStringCreateSimple("Quit application?");
+//    XmString quitYes = XmStringCreateSimple("Yes");
+//    XmString quitNo = XmStringCreateSimple("No");
+//
+//    quitDialog = XmCreateQuestionDialog(topLevel, "close", NULL, 0);
+//    XtVaSetValues(quitDialog,
+//                  XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL,
+//                  XmNmessageString, quitMessage,
+//                  XmNokLabelString, quitYes,
+//                  XmNcancelLabelString, quitNo,
+//                  NULL);
+//
+//    XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
+//
+//    XmStringFree(quitMessage);
+//    XmStringFree(quitYes);
+//    XmStringFree(quitNo);
 
-    quitDialog = XmCreateQuestionDialog(topLevel, "close", NULL, 0);
-    XtVaSetValues(quitDialog,
-                  XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL,
-                  XmNmessageString, quitMessage,
-                  XmNokLabelString, quitYes,
-                  XmNcancelLabelString, quitNo,
-                  NULL);
 
-    XmStringFree(quitMessage);
-    XmStringFree(quitYes);
-    XmStringFree(quitNo);
+    Widget shell = XtVaCreateWidget("dialog_shell",
+                             xmDialogShellWidgetClass,
+                             topLevel,
+                             NULL);
+    helpDialog = XtVaCreateWidget("dialog_box",
+                              xmMessageBoxWidgetClass,
+                              shell,
+                              NULL);
+    XtUnmanageChild(XmMessageBoxGetChild(helpDialog, XmDIALOG_CANCEL_BUTTON));
+    XtUnmanageChild(XmMessageBoxGetChild(helpDialog, XmDIALOG_HELP_BUTTON));
 
-    XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
+
+    XtVaSetValues(helpDialog, XmNdialogStyle, XmDIALOG_MODELESS, NULL);
+
+    String helpText = "Help of application Draw:\n\n"
+            "In application Draw you can draw different shapes of object\n"
+            "and colors. By selecting a choice in toolbox on the bottom\n"
+            "of application you can pick what will you draw. To draw an\n"
+            "object click on drawing area.\n\n"
+            "Created by Tomas Blazek (xblaze31)\n";
+
+    XtVaCreateManagedWidget(helpText, xmLabelWidgetClass, helpDialog, NULL);
+
 
     // Set rest of callbacks and manage created Widgets
 
@@ -798,7 +820,6 @@ int main(int argc, char **argv)
     XtSetLanguageProc(NULL, (XtLanguageProc)NULL, NULL);
 
     initApp(&app_context, argc, argv);
-
 
     XtAppMainLoop(app_context);
 

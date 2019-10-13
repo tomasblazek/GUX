@@ -6,6 +6,6 @@ set(CMAKE_C_STANDARD 99)
 
 
 set(SOURCE_FILES draw.c)
-add_executable(proj1 ${SOURCE_FILES})
+add_executable(Draw ${SOURCE_FILES})
 
-target_link_libraries(proj1 Xm Xt SM ICE Xp Xext X11)
+target_link_libraries(Draw Xm Xt SM ICE Xp Xext X11)
