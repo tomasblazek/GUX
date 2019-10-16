@@ -95,7 +95,7 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shap
     XSetForeground(display, gc, fgColor);
     XSetBackground(display, gc, bgColor);
 
-    XSetLineAttributes(display, gc, thickness, style, 0, 0);
+    XSetLineAttributes(display, gc, thickness, style, CapRound, 0);
     switch(shape){
         case Dot:
             if (thickness == 0){
