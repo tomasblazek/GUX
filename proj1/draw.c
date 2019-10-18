@@ -1,5 +1,7 @@
 /*
- * xdraw.c - Base for 1. project
+ * GUX 1. project - Draw editor
+ * Author: xblaze31
+ * Date: 18.10.2019
  */
 
 /*
@@ -12,10 +14,8 @@
  * Public include files for widgets used in this file.
  */
 #include <Xm/MainW.h> 
-#include <Xm/Form.h> 
 #include <Xm/Frame.h>
 #include <Xm/DrawingA.h>
-#include <Xm/PushB.h>
 #include <Xm/RowColumn.h>
 #include <Xm/Label.h>
 #include <Xm/MessageB.h>
@@ -76,6 +76,12 @@ int x1, y1, x2, y2;		/* input points */
 int button_pressed = 0;		/* input state */
 
 
+/**
+ * Swap function. Swap two integers.
+ *
+ * @param a
+ * @param b
+ */
 void swap(int *a, int *b){
 	int tmp;
 	tmp = *a;
@@ -83,7 +89,22 @@ void swap(int *a, int *b){
 	*b = tmp;
 }
 
-
+/**
+ * Function to draw objects on drawing area with selected graphic context and parameters of object
+ *
+ * @param w         Widget
+ * @param gc        Graphic context
+ * @param x1        Coordinate x1
+ * @param y1        Coordinate y1
+ * @param x2        Coordinate x2
+ * @param y2        Coordinate y2
+ * @param shape     Shape of object
+ * @param thickness Thickness of line
+ * @param style     Line style
+ * @param fgColor   Foreground color
+ * @param bgColor   Background color
+ * @param fillColor Filling color
+ */
 void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shape, unsigned int thickness, int style,
                 Pixel fgColor, Pixel bgColor, Pixel fillColor) {
 
@@ -137,10 +158,14 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shap
 }
 
 
-/*
+/**
  * "InputLine" event handler
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param event         Event structure
+ * @param cont          Cont
  */
-/* ARGSUSED */
 void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 {
     Pixel	fg, bg;
@@ -171,9 +196,12 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
     }
 }
 
-
-/*
+/**
  * "DrawLine" callback function
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
  */
 void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
@@ -233,10 +261,13 @@ void DrawObjectCB(Widget w, XtPointer client_data, XtPointer call_data)
         }
 }
 
-/*
- * "Expose" callback function
+/**
+ * Callback function to expose event. Redraw all objects on drawing area.
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
  */
-/* ARGSUSED */
 void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
     if (n_object <= 0){
@@ -254,32 +285,59 @@ void ExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
     }
 }
 
+
+/**
+ * Callback about menu and show help
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void AboutMenuCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
     XtManageChild(helpDialog);
 }
 
-/*
- * "Clear" button callback function
+/**
+ * Callback function to clear drawing area
+ *
+ * @param w
+ * @param client_data
+ * @param call_data
  */
-/* ARGSUSED */
 void ClearCB(Widget w, XtPointer client_data, XtPointer call_data)
-{ 
+{
     Widget wcd = (Widget) client_data;
 
-    n_object = 0;
+    if(objects != NULL && n_object > 0) {
+        n_object = 0;
+        maxObjects = 0;
+        free(objects);
+        objects = NULL;
+    }
     XClearWindow(XtDisplay(wcd), XtWindow(wcd));
+
 }
 
-
+/**
+ * Callback function to show quit dialog
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void QuitDialogCB(Widget w, XtPointer client_data, XtPointer call_data){
     XtManageChild(quitDialog);
 }
 
-/*
- * "Quit" button callback function
+/**
+ * Callback function for quitting application
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
  */
-/* ARGSUSED */
+
 void QuitCB(Widget w, XtPointer client_data, XtPointer call_data) {
     if (objects != NULL) {
         free(objects);
@@ -287,6 +345,14 @@ void QuitCB(Widget w, XtPointer client_data, XtPointer call_data) {
     exit(0);
 }
 
+
+/**
+ * Callback option menu
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void OptionMenuCB(Widget w, XtPointer client_data, XtPointer call_data){
     if (client_data == 0){
         ClearCB(w, drawArea, call_data);
@@ -295,6 +361,14 @@ void OptionMenuCB(Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
+
+/**
+ * Callback thickness radio box
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void thicknessRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t thickness = (intptr_t)  client_data;
 
@@ -312,7 +386,13 @@ void thicknessRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
-
+/**
+ * Callback shape radio box
+ *
+ * @param w                 Widget
+ * @param client_data       Client data
+ * @param call_data         Call data
+ */
 void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t select = (intptr_t) client_data;
 
@@ -334,7 +414,13 @@ void shapeRadioCB(Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
-
+/**
+ * Initialize colors and set default global background and foreground colors
+ *
+ * @param w         Widget
+ * @param color     Colors array
+ * @param nColors   Count of colors
+ */
 void initColors(Widget w, Pixel *color, int nColors){
     char *cName;
     XColor xColor, spare;
@@ -355,6 +441,13 @@ void initColors(Widget w, Pixel *color, int nColors){
     cfg_color = colors[0];
 }
 
+/**
+ * Callback of fill setting
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void fillRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t select = (intptr_t) client_data;
 
@@ -365,6 +458,13 @@ void fillRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
+/**
+ * Callback of line style radio box
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void lineStyleRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     intptr_t select = (intptr_t) client_data;
 
@@ -375,26 +475,53 @@ void lineStyleRadioCB (Widget w, XtPointer client_data, XtPointer call_data){
     }
 }
 
+
+/**
+ * Callback of foreground color radio box
+ *
+ * @param w             Widget
+ * @param client_data   Client_data
+ * @param call_data     Call_data
+ */
 void fgColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
     intptr_t select = (intptr_t) client_data;
 
     cfg_color = colors[select];
 }
 
+/**
+ * Callback of backgroud color radio box
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call_data
+ */
 void bgColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
     intptr_t select = (intptr_t) client_data;
 
     cbg_color = colors[select];
 }
 
-
+/**
+ * Callback of filling color radio box
+ *
+ * @param w             Widget
+ * @param client_data   Client data
+ * @param call_data     Call data
+ */
 void fillColorRadioCB (Widget w, XtPointer client_data, XtPointer call_data) {
     intptr_t select = (intptr_t) client_data;
 
     cfill_color = colors[select];
 }
 
-
+/**
+ *  Function initialize widgets and windows settings of application
+ *
+ * @param app_context Application context
+ * @param argc        Argc
+ * @param argv        Argv
+ */
 void initApp(XtAppContext *app_context, int argc, char* argv[]){
     Widget topLevel, mainWin, frame, rowColumn;
 
@@ -671,7 +798,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XmStringFree(empty);
     XmStringFree(fill);
 
-
+    // Fill setting
     Widget holderFillColor = XtVaCreateManagedWidget(
             "holderFillColor",
             xmFrameWidgetClass,
@@ -709,7 +836,6 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
 
 
     // Dash style
-    // Fill setting
 
     XmString solid = XmStringCreateSimple("Solid");
     XmString doubleDash = XmStringCreateSimple("DoubleDash");
@@ -744,7 +870,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XmStringFree(doubleDash);
 
 
-    // Dialog window
+    // Dialog windows
     XmString quitMessage = XmStringCreateSimple("Quit application?");
     XmString quitYes = XmStringCreateSimple("Yes");
     XmString quitNo = XmStringCreateSimple("No");
@@ -756,6 +882,8 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
                   XmNokLabelString, quitYes,
                   XmNcancelLabelString, quitNo,
                   NULL);
+
+    XtUnmanageChild(XmMessageBoxGetChild(quitDialog, XmDIALOG_HELP_BUTTON));
 
     XtAddCallback(quitDialog, XmNokCallback, QuitCB, NULL);
 
