@@ -35,7 +35,7 @@
  */
 
 #define LINES_ALLOC_STEP	10	/* memory allocation stepping */
-#define MIN_WIDTH 735   /* window width */
+#define MIN_WIDTH 910   /* window width */
 #define MIN_HEIGHT 400   /* window height */
 #define NUM_COLORS 5
 
@@ -811,7 +811,7 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmNpacking, XmPACK_TIGHT,	/* packing mode */
             NULL);
 
-    XtVaCreateManagedWidget("Filling Color", xmLabelWidgetClass, rowColumnFillColor, NULL);
+    XtVaCreateManagedWidget("Filling FG Color", xmLabelWidgetClass, rowColumnFillColor, NULL);
 
     Widget fillColorRadio = XmVaCreateSimpleRadioBox(
             rowColumnFillColor,
@@ -824,6 +824,37 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
             XmVaRADIOBUTTON, green, 'G', NULL, NULL,
             XmVaRADIOBUTTON, blue, 'B', NULL, NULL,
             NULL);
+
+
+    Widget holderFillBGColor = XtVaCreateManagedWidget(
+            "holderFillBGColor",
+            xmFrameWidgetClass,
+            rowColumn,
+            NULL);
+
+    Widget rowColumnFillBGColor = XtVaCreateManagedWidget(
+            "rowColumn",			/* widget name */
+            xmRowColumnWidgetClass,		/* widget class */
+            holderFillBGColor,				/* parent widget */
+            XmNentryAlignment, XmALIGNMENT_CENTER,	/* alignment */
+            XmNorientation, XmVERTICAL,	/* orientation */
+            XmNpacking, XmPACK_TIGHT,	/* packing mode */
+            NULL);
+
+    XtVaCreateManagedWidget("Filling BG Color", xmLabelWidgetClass, rowColumnFillBGColor, NULL);
+
+    Widget fillBGColorRadio = XmVaCreateSimpleRadioBox(
+            rowColumnFillBGColor,
+            "bgColorFillRadio",
+            0,
+            NULL, // for future bg filling
+            XmVaRADIOBUTTON, black, 'k', NULL, NULL,
+            XmVaRADIOBUTTON, white, 'W', NULL, NULL,
+            XmVaRADIOBUTTON, red, 'R', NULL, NULL,
+            XmVaRADIOBUTTON, green, 'G', NULL, NULL,
+            XmVaRADIOBUTTON, blue, 'B', NULL, NULL,
+            NULL);
+
 
     XmStringFree(black);
     XmStringFree(white);
@@ -929,8 +960,9 @@ void initApp(XtAppContext *app_context, int argc, char* argv[]){
     XtManageChild(shapeRadio);
     XtManageChild(fgColorRadio);
     XtManageChild(bgColorRadio);
-    XtManageChild(fillColorRadio);
     XtManageChild(fillRadio);
+    XtManageChild(fillColorRadio);
+    XtManageChild(fillBGColorRadio);
     XtManageChild(lineStyleRadio);
 }
 
