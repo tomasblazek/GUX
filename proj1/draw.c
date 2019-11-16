@@ -159,7 +159,8 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shap
 
 
 /**
- * "InputLine" event handler
+ * "InputLine" event handler. Draw function redrawing shape while moving mouse. Always with solid line
+ * because of performance reasons.
  *
  * @param w             Widget
  * @param client_data   Client data
@@ -176,13 +177,11 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
 		    inputGC = XCreateGC(XtDisplay(w), XtWindow(w), 0, NULL);
 		    XSetFunction(XtDisplay(w), inputGC, GXinvert);
 		    XSetPlaneMask(XtDisplay(w), inputGC, ~0);
-		    XtVaGetValues(w, XmNforeground, &fg, XmNbackground, &bg, NULL);
-		    //XSetForeground(XtDisplay(w), inputGC, bg ^ fg);
         }
 
 		if (button_pressed > 1) {
 		    /* erase previous position */
-            DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style, cfg_color, cbg_color, cfill_color);
+            DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, LineSolid, cfg_color, cbg_color, cfill_color);
 		} else {
 		    /* remember first MotionNotify */
 		    button_pressed = 2;
@@ -191,8 +190,7 @@ void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont
 		x2 = event->xmotion.x;
 		y2 = event->xmotion.y;
 
-        //XSetFunction(XtDisplay(w), inputGC, GXcopy);
-        DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, c_style, cfg_color, cbg_color, cfill_color);
+        DrawObject(w, inputGC, x1, y1, x2, y2, c_shape, c_thickness, LineSolid, cfg_color, cbg_color, cfill_color);
     }
 }
 
