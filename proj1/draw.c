@@ -169,7 +169,6 @@ void DrawObject(Widget w, GC gc, int x1, int y1, int x2, int y2, enum Shape shap
  */
 void InputObjectEH(Widget w, XtPointer client_data, XEvent *event, Boolean *cont)
 {
-    Pixel	fg, bg;
     static GC inputGC = 0;			/* GC used for drawing current position */
 
     if (button_pressed) {
