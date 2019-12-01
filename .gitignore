@@ -3,3 +3,5 @@
 .idea
 cmake-build-debug
 draw
+CMakeLists.txt
+calc
