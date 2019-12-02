@@ -111,7 +111,7 @@ void valid_input_double(){
 
 int float_to_string(double num, char **str){
     char buffer[SIZE_OF_BUFFER];
-    int ret = snprintf(buffer, sizeof buffer, "%f", num);
+    int ret = snprintf(buffer, sizeof buffer, "%.10g", num);
 
     if (ret < 0) {
         return EXIT_FAILURE;
@@ -193,6 +193,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
                 calculation_state = OPERATOR;
                 gtk_label_set_text(GTK_LABEL(output_operand1), str);
                 gtk_label_set_text(GTK_LABEL(output_operator), in);
+                gtk_label_set_text(GTK_LABEL(output_operand2), "");
                 gtk_entry_set_text(GTK_ENTRY(input), "");
             }
             break;
@@ -209,24 +210,21 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
             }
             break;
         case OPERAND2:
-            if (is_operator(in[0])){
-                // todo
-            }
             if (equals_pressed){
                 operand2 = atof(str);
                 do_math(operator, operand1, operand2, &result);
                 gtk_label_set_text(GTK_LABEL(output_operand2), str);
                 gtk_entry_set_text(GTK_ENTRY(input), result);
                 calculation_state = OPERAND1;
+//                }
+                size_t len = strlen(result);
+                gtk_entry_set_position(GTK_ENTRY(input), (guint) len);
             }
             break;
         default:
             fprintf(stderr, "Error: State mashine failed!\n");
             quitCB(NULL, NULL);
     }
-
-
-
 }
 
 
