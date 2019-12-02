@@ -72,6 +72,7 @@ void clearCB(GtkWidget *widget, gpointer data){
 
 
 void quitCB(GtkWidget *widget, gpointer data){
+    free(result);
     gtk_main_quit();
 }
 
@@ -144,40 +145,37 @@ bool do_math(int operator, double operand1, double operand2, char **result){
 }
 
 
-void make_output_with_operator(const char* str, char operator, char **res, bool add){
-    char buffer[SIZE_OF_BUFFER];
-    switch(operator){
-        case 'n':
-            break;
-        default:
-            strcpy(buffer, str);
-            size_t len = strlen(buffer);
-            if(len + 1 <= SIZE_OF_BUFFER){
-                buffer[len] = operator;
-                buffer[len+1] = '\0';
-            }
-    }
-    *res = buffer;
-}
-
-
 void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
     static double operand1;
     static char operator;
     static double operand2;
     if (result == NULL) {
         result = malloc(1000 * sizeof(char));
+        if (result == NULL){
+            perror("Error: Malloc\n");
+            quitCB(NULL, NULL);
+        }
     }
 
     printf("State: %d\n", calculation_state);
-
     bool equals_pressed = false;
-    char *in = (char *) data;
+    char data_in[2] = {(char) data, '\0'};
+    char *in = data_in;
     if (event != NULL){
         in = event->string;
         if (event->keyval == GDK_KEY_Return){
             equals_pressed = true;
         }
+    } else {
+        const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
+        char buffer[SIZE_OF_BUFFER];
+        strcpy(buffer, str);
+        size_t len = strlen(buffer);
+        if(len + 1 <= SIZE_OF_BUFFER){
+            buffer[len] = in[0];
+            buffer[len+1] = '\0';
+        }
+        gtk_entry_set_text(GTK_ENTRY(input), buffer);
     }
 
 
@@ -185,7 +183,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
     const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
     printf("Entry input: %s\n", str);
-    printf("Data input: %s\n", in);
+    printf("Data input: %c\n", in[0]);
 
     switch(calculation_state){
         case OPERAND1:
@@ -217,10 +215,8 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
             if (equals_pressed){
                 operand2 = atof(str);
                 do_math(operator, operand1, operand2, &result);
-                gtk_entry_set_text(GTK_ENTRY(input), "");
-                gtk_label_set_text(GTK_LABEL(output_operand1), result);
-                gtk_label_set_text(GTK_LABEL(output_operator), "");
-                gtk_label_set_text(GTK_LABEL(output_operand2), "");
+                gtk_label_set_text(GTK_LABEL(output_operand2), str);
+                gtk_entry_set_text(GTK_ENTRY(input), result);
                 calculation_state = OPERAND1;
             }
             break;
@@ -236,11 +232,6 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
 void key_clickedCB(GtkWidget *widget, gpointer data){
     key_pressedCB(widget, NULL, data);
-
-//    gchar *str;
-//    gtk_label_get(GTK_LABEL(output), &str);
-//    strcat(str, data);
-//    gtk_label_set(GTK_LABEL(output), str);
 }
 
 void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
