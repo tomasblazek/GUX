@@ -6,7 +6,7 @@
 
 #define WIDHT 200
 #define HEIGHT 300
-
+#define SIZE_OF_BUFFER 1000
 
 typedef struct Keys {
     GtkWidget *button;
@@ -38,12 +38,20 @@ Key basic_buttons[NUM_KEY_BASIC] = {
         {NULL, "_=", '9', GDK_KEY_equal, 2, 3, 3, 4},
 };
 
+
+int operators[] = {'+', '-', '\0'};
+
+
 enum Mode {BASIC, SCIENTIFIC, PROGRAMMER};
 enum Calculation {OPERAND1, OPERATOR, OPERAND2};
 
 enum Calculation calculation_state = OPERAND1;
-GtkWidget *output;
+GtkWidget *output_operand1;
+GtkWidget *output_operator;
+GtkWidget *output_operand2;
 GtkWidget *input;
+char *result;
+
 
 void changeModeCB(GtkWidget *widget, gpointer data){
     gboolean t = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
@@ -67,7 +75,7 @@ void quitCB(GtkWidget *widget, gpointer data){
     gtk_main_quit();
 }
 
-bool is_number(char* str){
+bool is_number(const char* str){
     char *end;
     strtod(str, &end);
     if(strcmp(end, "") != 0){
@@ -76,8 +84,18 @@ bool is_number(char* str){
     return true;
 }
 
+bool is_operator(char c){
+    for (int i = 0; operators[i] > 0 ; i++){
+        if (c == operators[i] ) {
+            return true;
+        }
+    }
 
-double input_double(){
+    return false;
+}
+
+
+void valid_input_double(){
     const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
     if (!is_number((char *) str)){
         size_t len = strlen(str);
@@ -90,41 +108,128 @@ double input_double(){
 }
 
 
-void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data){
+int float_to_string(double num, char **str){
+    char buffer[SIZE_OF_BUFFER];
+    int ret = snprintf(buffer, sizeof buffer, "%f", num);
+
+    if (ret < 0) {
+        return EXIT_FAILURE;
+    }
+
+    *str = buffer;
+    return EXIT_SUCCESS;
+}
+
+bool do_math(int operator, double operand1, double operand2, char **result){
+    bool fail = false;
+    double res = 0;
+    switch (operator){
+        case '+':
+            res = operand1 + operand2;
+            break;
+        case '-':
+            res = operand1 - operand2;
+            break;
+        default:
+            break;
+    }
+
+    if (!fail){
+        char *r;
+        float_to_string(res, &r);
+        strcpy(*result, r);
+    }
+
+    return fail;
+}
+
+
+void make_output_with_operator(const char* str, char operator, char **res, bool add){
+    char buffer[SIZE_OF_BUFFER];
+    switch(operator){
+        case 'n':
+            break;
+        default:
+            strcpy(buffer, str);
+            size_t len = strlen(buffer);
+            if(len + 1 <= SIZE_OF_BUFFER){
+                buffer[len] = operator;
+                buffer[len+1] = '\0';
+            }
+    }
+    *res = buffer;
+}
+
+
+void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
     static double operand1;
-    static int operator;
+    static char operator;
     static double operand2;
+    if (result == NULL) {
+        result = malloc(1000 * sizeof(char));
+    }
 
     printf("State: %d\n", calculation_state);
+
+    bool equals_pressed = false;
     char *in = (char *) data;
     if (event != NULL){
         in = event->string;
+        if (event->keyval == GDK_KEY_Return){
+            equals_pressed = true;
+        }
     }
 
-    printf("Data input: %s\n", in);
 
+    valid_input_double(); // valid input here
+
+    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
+    printf("Entry input: %s\n", str);
+    printf("Data input: %s\n", in);
 
     switch(calculation_state){
         case OPERAND1:
-            if (!strcmp(in, "+") || !strcmp(in, "-")){ // TODO function
-                operator = (int) in;
-                calculation_state = OPERAND2;
+            if (is_operator(in[0])){
+                operator = in[0];
+                operand1 = atof(str);
+                calculation_state = OPERATOR;
+                gtk_label_set_text(GTK_LABEL(output_operand1), str);
+                gtk_label_set_text(GTK_LABEL(output_operator), in);
+                gtk_entry_set_text(GTK_ENTRY(input), "");
             }
-            operand1 = input_double();
+            break;
+        case OPERATOR:
+            if (is_operator(in[0])){
+                operator = in[0];
+                gtk_label_set_text(GTK_LABEL(output_operator), in);
+                gtk_entry_set_text(GTK_ENTRY(input), "");
+                break;
+            }
+
+            if (is_number(str)){
+               calculation_state = OPERAND2;
+            }
             break;
         case OPERAND2:
-            if (!strcmp(in, "+") || !strcmp(in, "-")){ // TODO function
-                operator = (int) in;
+            if (is_operator(in[0])){
+                // todo
             }
-            operand2 = input_double();
+            if (equals_pressed){
+                operand2 = atof(str);
+                do_math(operator, operand1, operand2, &result);
+                gtk_entry_set_text(GTK_ENTRY(input), "");
+                gtk_label_set_text(GTK_LABEL(output_operand1), result);
+                gtk_label_set_text(GTK_LABEL(output_operator), "");
+                gtk_label_set_text(GTK_LABEL(output_operand2), "");
+                calculation_state = OPERAND1;
+            }
             break;
         default:
             fprintf(stderr, "Error: State mashine failed!\n");
             quitCB(NULL, NULL);
     }
 
-    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
-    printf("Entry input: %s\n", str);
+
 
 }
 
@@ -226,7 +331,9 @@ void initialize_app(){
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_about), menu_item);
 
     // Ouput box
-    output  = gtk_label_new("Hello");
+    output_operand1  = gtk_label_new("");
+    output_operator  = gtk_label_new("");
+    output_operand2  = gtk_label_new("");
 
     //gtk_label_set(view, "olalal");
 
@@ -243,7 +350,12 @@ void initialize_app(){
     // Container settings
     GtkWidget *main_window_box = gtk_vbox_new(FALSE, spacing);
     gtk_container_add(GTK_CONTAINER(main_window_box), menu_bar);
-    gtk_container_add(GTK_CONTAINER(main_window_box), output);
+    GtkWidget *outputs = gtk_hbox_new(FALSE, spacing);
+    gtk_container_add(GTK_CONTAINER(outputs), output_operand1);
+    gtk_container_add(GTK_CONTAINER(outputs), output_operator);
+    gtk_container_add(GTK_CONTAINER(outputs), output_operand2);
+
+    gtk_container_add(GTK_CONTAINER(main_window_box), outputs);
     gtk_container_add(GTK_CONTAINER(main_window_box), input);
     gtk_container_add(GTK_CONTAINER(main_window_box), table_buttons);
     gtk_container_child_set(GTK_CONTAINER(main_window_box), GTK_WIDGET(menu_bar), "expand", FALSE, NULL);
@@ -263,8 +375,8 @@ int main( int argc, char *argv[] )
 
     gtk_init(&argc, &argv);
     initialize_app();
-    
+
     gtk_main();
-    
+
     return 0;
 }
