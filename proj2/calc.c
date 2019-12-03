@@ -145,7 +145,7 @@ bool do_math(int operator, double operand1, double operand2, char **result){
 }
 
 
-void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gchar data) {
     static double operand1;
     static char operator;
     static double operand2;
@@ -159,7 +159,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
     printf("State: %d\n", calculation_state);
     bool equals_pressed = false;
-    char data_in[2] = {(char) data, '\0'};
+    char data_in[2] = {data, '\0'};
     char *in = data_in;
     if (event != NULL){
         in = event->string;
@@ -187,7 +187,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
     switch(calculation_state){
         case OPERAND1:
-            if (is_operator(in[0])){
+            if (is_operator(in[0]) && strcmp(str, "")){
                 operator = in[0];
                 operand1 = atof(str);
                 calculation_state = OPERATOR;
@@ -215,10 +215,9 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
                 do_math(operator, operand1, operand2, &result);
                 gtk_label_set_text(GTK_LABEL(output_operand2), str);
                 gtk_entry_set_text(GTK_ENTRY(input), result);
-                calculation_state = OPERAND1;
-//                }
                 size_t len = strlen(result);
                 gtk_entry_set_position(GTK_ENTRY(input), (guint) len);
+                calculation_state = OPERAND1;
             }
             break;
         default:
@@ -229,7 +228,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
 
 void key_clickedCB(GtkWidget *widget, gpointer data){
-    key_pressedCB(widget, NULL, data);
+    key_pressedCB(widget, NULL, *(gchar *) data);
 }
 
 void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
@@ -243,7 +242,7 @@ void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
                                   basic_buttons[i].y1,
                                   basic_buttons[i].y2);
         gtk_widget_add_accelerator(b, "clicked", accel_group, basic_buttons[i].gdk_key, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-        g_signal_connect(b, "clicked", G_CALLBACK(key_clickedCB), basic_buttons[i].value);
+        g_signal_connect(b, "clicked", G_CALLBACK(key_clickedCB), &basic_buttons[i].value);
     }
 
 };
@@ -323,8 +322,6 @@ void initialize_app(){
     output_operand1  = gtk_label_new("");
     output_operator  = gtk_label_new("");
     output_operand2  = gtk_label_new("");
-
-    //gtk_label_set(view, "olalal");
 
     // Input box
     input = gtk_entry_new();
