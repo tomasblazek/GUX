@@ -20,22 +20,26 @@ typedef struct Keys {
 } Key;
 
 #define NUM_ROW_KEY_BASIC 4
-#define NUM_COLUMN_KEY_BASIC 3
+#define NUM_COLUMN_KEY_BASIC 4
 #define NUM_KEY_BASIC NUM_ROW_KEY_BASIC * NUM_COLUMN_KEY_BASIC
 Key basic_buttons[NUM_KEY_BASIC] = {
         {NULL, "_1", '1', GDK_KEY_1, 0, 1, 0, 1},
         {NULL, "_2", '2', GDK_KEY_2, 1, 2, 0, 1},
         {NULL, "_3", '3', GDK_KEY_3, 2, 3, 0, 1},
-        //{NULL, "_+", "+", GDK_KEY_plus, 3, 4, 0, 1},
+        {NULL, "_+", '+', GDK_KEY_plus, 3, 4, 0, 1},
         {NULL, "_4", '4', GDK_KEY_4, 0, 1, 1, 2},
         {NULL, "_5", '5', GDK_KEY_5, 1, 2, 1, 2},
         {NULL, "_6", '6', GDK_KEY_6, 2, 3, 1, 2},
+        {NULL, "_-", '-', GDK_KEY_minus, 3, 4, 1, 2},
         {NULL, "_7", '7', GDK_KEY_7, 0, 1, 2, 3},
         {NULL, "_8", '8', GDK_KEY_8, 1, 2, 2, 3},
         {NULL, "_9", '9', GDK_KEY_9, 2, 3, 2, 3},
-        {NULL, "_↩", '9', GDK_KEY_BackSpace, 0, 1, 3, 4},
+        {NULL, "_*", '*', GDK_KEY_plus, 3, 4, 2, 3},
+        {NULL, "_,", ',', GDK_KEY_colon, 0, 1, 3, 4},
+        //{NULL, "_↩", '9', GDK_KEY_BackSpace, 0, 1, 3, 4},
         {NULL, "_0", '0', GDK_KEY_0, 1, 2, 3, 4},
         {NULL, "_=", '9', GDK_KEY_equal, 2, 3, 3, 4},
+        {NULL, "_/", '/', GDK_KEY_plus, 3, 4, 3, 4},
 };
 
 
@@ -100,11 +104,13 @@ void valid_input_double(){
     const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
     if (!is_number((char *) str)){
         size_t len = strlen(str);
+        gint cursor_pos = GTK_ENTRY(input)->current_pos;
         char new_str[len];
-        strncpy(new_str, str, len-1);
-        new_str[len-1] = '\0';
+        strncpy(new_str, str, (size_t) cursor_pos-1);
+        new_str[cursor_pos-1] = '\0';
+        strcat(new_str, str+cursor_pos);
         gtk_entry_set_text(GTK_ENTRY(input), new_str);
-        gtk_entry_set_position(GTK_ENTRY(input), (gint) len);
+        gtk_entry_set_position(GTK_ENTRY(input), cursor_pos - 1);
     }
 }
 
@@ -149,6 +155,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gchar data) {
     static double operand1;
     static char operator;
     static double operand2;
+
     if (result == NULL) {
         result = malloc(1000 * sizeof(char));
         if (result == NULL){
@@ -156,6 +163,7 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gchar data) {
             quitCB(NULL, NULL);
         }
     }
+
 
     printf("State: %d\n", calculation_state);
     bool equals_pressed = false;
