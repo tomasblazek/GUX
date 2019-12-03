@@ -23,27 +23,27 @@ typedef struct Keys {
 #define NUM_COLUMN_KEY_BASIC 4
 #define NUM_KEY_BASIC NUM_ROW_KEY_BASIC * NUM_COLUMN_KEY_BASIC
 Key basic_buttons[NUM_KEY_BASIC] = {
-        {NULL, "_1", '1', GDK_KEY_1, 0, 1, 0, 1},
-        {NULL, "_2", '2', GDK_KEY_2, 1, 2, 0, 1},
-        {NULL, "_3", '3', GDK_KEY_3, 2, 3, 0, 1},
-        {NULL, "_+", '+', GDK_KEY_plus, 3, 4, 0, 1},
-        {NULL, "_4", '4', GDK_KEY_4, 0, 1, 1, 2},
-        {NULL, "_5", '5', GDK_KEY_5, 1, 2, 1, 2},
-        {NULL, "_6", '6', GDK_KEY_6, 2, 3, 1, 2},
-        {NULL, "_-", '-', GDK_KEY_minus, 3, 4, 1, 2},
-        {NULL, "_7", '7', GDK_KEY_7, 0, 1, 2, 3},
-        {NULL, "_8", '8', GDK_KEY_8, 1, 2, 2, 3},
-        {NULL, "_9", '9', GDK_KEY_9, 2, 3, 2, 3},
-        {NULL, "_*", '*', GDK_KEY_plus, 3, 4, 2, 3},
-        {NULL, "_,", ',', GDK_KEY_colon, 0, 1, 3, 4},
-        //{NULL, "_↩", '9', GDK_KEY_BackSpace, 0, 1, 3, 4},
-        {NULL, "_0", '0', GDK_KEY_0, 1, 2, 3, 4},
-        {NULL, "_=", '9', GDK_KEY_equal, 2, 3, 3, 4},
-        {NULL, "_/", '/', GDK_KEY_plus, 3, 4, 3, 4},
+        {NULL, "1", '1', GDK_KEY_1, 0, 1, 0, 1},
+        {NULL, "2", '2', GDK_KEY_2, 1, 2, 0, 1},
+        {NULL, "3", '3', GDK_KEY_3, 2, 3, 0, 1},
+        {NULL, "+", '+', GDK_KEY_plus, 3, 4, 0, 1},
+        {NULL, "4", '4', GDK_KEY_4, 0, 1, 1, 2},
+        {NULL, "5", '5', GDK_KEY_5, 1, 2, 1, 2},
+        {NULL, "6", '6', GDK_KEY_6, 2, 3, 1, 2},
+        {NULL, "-", '-', GDK_KEY_minus, 3, 4, 1, 2},
+        {NULL, "7", '7', GDK_KEY_7, 0, 1, 2, 3},
+        {NULL, "8", '8', GDK_KEY_8, 1, 2, 2, 3},
+        {NULL, "9", '9', GDK_KEY_9, 2, 3, 2, 3},
+        {NULL, "*", '*', GDK_KEY_plus, 3, 4, 2, 3},
+        {NULL, ",", ',', GDK_KEY_colon, 0, 1, 3, 4},
+        //{NULL, "↩", '9', GDK_KEY_BackSpace, 0, 1, 3, 4},
+        {NULL, "0", '0', GDK_KEY_0, 1, 2, 3, 4},
+        {NULL, "=", '=', GDK_KEY_equal, 2, 3, 3, 4},
+        {NULL, "/", '/', GDK_KEY_plus, 3, 4, 3, 4},
 };
 
 
-int operators[] = {'+', '-', '\0'};
+int operators[] = {'/', '*','+','-', '\0'};
 
 
 enum Mode {BASIC, SCIENTIFIC, PROGRAMMER};
@@ -54,7 +54,6 @@ GtkWidget *output_operand1;
 GtkWidget *output_operator;
 GtkWidget *output_operand2;
 GtkWidget *input;
-char *result;
 
 
 void changeModeCB(GtkWidget *widget, gpointer data){
@@ -76,7 +75,6 @@ void clearCB(GtkWidget *widget, gpointer data){
 
 
 void quitCB(GtkWidget *widget, gpointer data){
-    free(result);
     gtk_main_quit();
 }
 
@@ -100,20 +98,34 @@ bool is_operator(char c){
 }
 
 
-void valid_input_double(){
-    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
-    if (!is_number((char *) str)){
-        size_t len = strlen(str);
-        gint cursor_pos = GTK_ENTRY(input)->current_pos;
-        char new_str[len];
-        strncpy(new_str, str, (size_t) cursor_pos-1);
-        new_str[cursor_pos-1] = '\0';
-        strcat(new_str, str+cursor_pos);
-        gtk_entry_set_text(GTK_ENTRY(input), new_str);
-        gtk_entry_set_position(GTK_ENTRY(input), cursor_pos - 1);
-    }
-}
+//void valid_input_double(){
+//    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
+//    if (!is_number((char *) str)){
+//        size_t len = strlen(str);
+//        gint cursor_pos = GTK_ENTRY(input)->current_pos;
+//        char new_str[len];
+//        strncpy(new_str, str, (size_t) cursor_pos-1);
+//        new_str[cursor_pos-1] = '\0';
+//        strcat(new_str, str+cursor_pos);
+//        gtk_entry_set_text(GTK_ENTRY(input), new_str);
+//        gtk_entry_set_position(GTK_ENTRY(input), cursor_pos - 1);
+//    }
+//}
 
+
+//void valid_input_double(str){
+//    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
+//    if (!is_number((char *) str)){
+//        size_t len = strlen(str);
+//        gint cursor_pos = GTK_ENTRY(input)->current_pos;
+//        char new_str[len];
+//        strncpy(new_str, str, (size_t) cursor_pos-1);
+//        new_str[cursor_pos-1] = '\0';
+//        strcat(new_str, str+cursor_pos);
+//        gtk_entry_set_text(GTK_ENTRY(input), new_str);
+//        gtk_entry_set_position(GTK_ENTRY(input), cursor_pos - 1);
+//    }
+//}
 
 int float_to_string(double num, char **str){
     char buffer[SIZE_OF_BUFFER];
@@ -127,104 +139,98 @@ int float_to_string(double num, char **str){
     return EXIT_SUCCESS;
 }
 
-bool do_math(int operator, double operand1, double operand2, char **result){
+bool do_math(int operator, double operand1, double operand2, double **result){
     bool fail = false;
     double res = 0;
     switch (operator){
         case '+':
-            res = operand1 + operand2;
-            break;
+            res = operand1 + operand2; break;
         case '-':
-            res = operand1 - operand2;
-            break;
+            res = operand1 - operand2; break;
+        case '*':
+            res = operand1 * operand2; break;
+        case '/':
+            res = operand1 / operand2; break;
         default:
+            fail = true;
             break;
     }
 
     if (!fail){
-        char *r;
-        float_to_string(res, &r);
-        strcpy(*result, r);
+        *result = &res;
     }
 
     return fail;
 }
 
 
-void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gchar data) {
+void calc_mashine(Key *key){
     static double operand1;
     static char operator;
     static double operand2;
+    char *result_str = NULL;
+    double *result;
+    bool equals_pressed = false;
+    printf("State: %d\n", calculation_state);
 
-    if (result == NULL) {
-        result = malloc(1000 * sizeof(char));
-        if (result == NULL){
+    if (result_str == NULL) {
+        result_str = calloc(0, SIZE_OF_BUFFER * sizeof(char));
+        if (result_str == NULL){
             perror("Error: Malloc\n");
             quitCB(NULL, NULL);
         }
     }
 
-
-    printf("State: %d\n", calculation_state);
-    bool equals_pressed = false;
-    char data_in[2] = {data, '\0'};
-    char *in = data_in;
-    if (event != NULL){
-        in = event->string;
-        if (event->keyval == GDK_KEY_Return){
-            equals_pressed = true;
-        }
-    } else {
-        const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
-        char buffer[SIZE_OF_BUFFER];
-        strcpy(buffer, str);
-        size_t len = strlen(buffer);
-        if(len + 1 <= SIZE_OF_BUFFER){
-            buffer[len] = in[0];
-            buffer[len+1] = '\0';
-        }
-        gtk_entry_set_text(GTK_ENTRY(input), buffer);
+    gchar in = key->value;
+    if (in == '='){
+        equals_pressed = true;
     }
 
-
-    valid_input_double(); // valid input here
-
-    const gchar *str = gtk_entry_get_text(GTK_ENTRY(input));
-    printf("Entry input: %s\n", str);
-    printf("Data input: %c\n", in[0]);
+    const gchar *input_str = gtk_entry_get_text(GTK_ENTRY(input));
+    printf("Entry input: %s\n", input_str);
+    printf("Data input: %c\n", in);
 
     switch(calculation_state){
         case OPERAND1:
-            if (is_operator(in[0]) && strcmp(str, "")){
-                operator = in[0];
-                operand1 = atof(str);
+            if (is_operator(in) && strcmp(input_str, "") != 0){
+                operator = in;
+                operand1 = atof(input_str);
                 calculation_state = OPERATOR;
-                gtk_label_set_text(GTK_LABEL(output_operand1), str);
-                gtk_label_set_text(GTK_LABEL(output_operator), in);
+                gtk_label_set_text(GTK_LABEL(output_operand1), input_str);
+                gtk_label_set_text(GTK_LABEL(output_operator), key->label);
                 gtk_label_set_text(GTK_LABEL(output_operand2), "");
                 gtk_entry_set_text(GTK_ENTRY(input), "");
             }
             break;
         case OPERATOR:
-            if (is_operator(in[0])){
-                operator = in[0];
-                gtk_label_set_text(GTK_LABEL(output_operator), in);
+            if (is_operator(in)){
+                operator = in;
+                gtk_label_set_text(GTK_LABEL(output_operator), &in);
                 gtk_entry_set_text(GTK_ENTRY(input), "");
                 break;
             }
 
-            if (is_number(str)){
-               calculation_state = OPERAND2;
+            if (is_number(input_str)){
+                calculation_state = OPERAND2;
             }
             break;
         case OPERAND2:
             if (equals_pressed){
-                operand2 = atof(str);
-                do_math(operator, operand1, operand2, &result);
-                gtk_label_set_text(GTK_LABEL(output_operand2), str);
-                gtk_entry_set_text(GTK_ENTRY(input), result);
-                size_t len = strlen(result);
-                gtk_entry_set_position(GTK_ENTRY(input), (guint) len);
+                operand2 = atof(input_str);
+                if (do_math(operator, operand1, operand2, &result)){
+                    gtk_label_set_text(GTK_LABEL(output_operand1), "");
+                    gtk_label_set_text(GTK_LABEL(output_operator), "Error");
+                    GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
+                    gtk_entry_buffer_delete_text(GTK_ENTRY_BUFFER(buffer), 0, (guint) strlen(input_str));
+                    calculation_state = OPERAND1;
+                    break;
+                }
+                float_to_string(*result, &result_str);
+                guint len = (guint) strlen(result_str);
+                gtk_label_set_text(GTK_LABEL(output_operand2), input_str);
+                GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
+                gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, len);
+                g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
                 calculation_state = OPERAND1;
             }
             break;
@@ -234,10 +240,47 @@ void key_pressedCB(GtkWidget *widget, GdkEventKey *event, gchar data) {
     }
 }
 
-
-void key_clickedCB(GtkWidget *widget, gpointer data){
-    key_pressedCB(widget, NULL, *(gchar *) data);
+Key* get_button(gchar in) {
+    for(int i = 0; i < NUM_KEY_BASIC; i++){
+        if (basic_buttons[i].value == in){
+            return &basic_buttons[i];
+        }
+    }
+    return NULL;
 }
+
+
+
+void button_clickedCB(GtkWidget *widget, gpointer data){
+    gchar in = *(gchar *) data;
+
+    Key *key = get_button(in);
+    calc_mashine(key);
+
+    GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
+    const gchar *text = gtk_entry_buffer_get_text(buffer);
+
+    if(in >= '0' && in <= '9' || in == ',') {
+        // check if new text will be number
+        char append_str[] = {in, '\0'};
+        size_t new_text_len = strlen(text) + sizeof(append_str);
+        char new_text[new_text_len];
+        strcpy(new_text, text);
+        strcat(new_text, append_str);
+        if(!is_number(new_text)){
+          return;
+        }
+        // add symbol to entry
+        guint cursor;
+        g_object_get(input, "cursor-position", &cursor, NULL);
+        guint len = (guint) strlen((*key).label);
+        gtk_entry_buffer_insert_text(GTK_ENTRY_BUFFER(buffer), cursor, (*key).label, len);
+        g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
+    }
+
+}
+
+
 
 void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
     GtkWidget *b;
@@ -250,7 +293,7 @@ void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
                                   basic_buttons[i].y1,
                                   basic_buttons[i].y2);
         gtk_widget_add_accelerator(b, "clicked", accel_group, basic_buttons[i].gdk_key, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-        g_signal_connect(b, "clicked", G_CALLBACK(key_clickedCB), &basic_buttons[i].value);
+        g_signal_connect(b, "clicked", G_CALLBACK(button_clickedCB), &basic_buttons[i].value);
     }
 
 };
@@ -333,7 +376,8 @@ void initialize_app(){
 
     // Input box
     input = gtk_entry_new();
-    g_signal_connect(input, "key_release_event", G_CALLBACK(key_pressedCB), NULL);
+    gtk_entry_set_editable(GTK_ENTRY(input), false);
+    //g_signal_connect(input, "key_release_event", G_CALLBACK(key_pressedCB), NULL);
 
     // Buttons
     GtkWidget *table_buttons = gtk_table_new(NUM_COLUMN_KEY_BASIC, NUM_ROW_KEY_BASIC, TRUE);
