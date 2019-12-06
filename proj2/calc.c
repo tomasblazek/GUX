@@ -47,6 +47,24 @@ Key basic_buttons[] = {
         {NULL, "÷",     GDK_KEY_slash,      3, 4, 4, 5},
 };
 
+#define NUM_ROW_KEY_SCIENTIFIC 1
+#define NUM_COLUMN_KEY_SCIENTIFIC 4
+Key scientific_buttons[] = {
+        {NULL, "!", GDK_KEY_BackSpace, 0, 1, 0, 1}, //TODO GDK key
+        {NULL, "x²", GDK_KEY_BackSpace, 1, 2, 0, 1},
+        {NULL, "√", GDK_KEY_BackSpace, 2, 3, 0, 1},
+        {NULL, "log", GDK_KEY_BackSpace, 3, 4, 0, 1},
+};
+
+
+#define NUM_ROW_KEY_PROGRAMMER 1
+#define NUM_COLUMN_KEY_PROGRAMMER 4
+Key programmer_buttons[] = {
+        {NULL, "AND", GDK_KEY_BackSpace, 0, 1, 0, 1}, //TODO GDK key
+        {NULL, "OR", GDK_KEY_BackSpace, 1, 2, 0, 1},
+        {NULL, "NOT", GDK_KEY_BackSpace, 2, 3, 0, 1},
+        {NULL, "XOR", GDK_KEY_BackSpace, 3, 4, 0, 1},
+};
 
 int operators[] = {'/', '*','+','-', '\0'};
 
@@ -275,19 +293,17 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
 
 
 
-void add_keys(GtkTable *t, GtkAccelGroup *accel_group){
+void create_buttons(GtkTable *t, Key *keys, size_t num_keys){
     GtkWidget *b;
-    size_t num_keys = sizeof(basic_buttons) / sizeof(Key);
     for (int i = 0; i < num_keys; i++){
-        b = gtk_button_new_with_mnemonic(basic_buttons[i].label);
-        basic_buttons[i].button = b;
+        b = gtk_button_new_with_mnemonic(keys[i].label);
+        keys[i].button = b;
         gtk_table_attach_defaults(t, b,
-                                  basic_buttons[i].x1,
-                                  basic_buttons[i].x2,
-                                  basic_buttons[i].y1,
-                                  basic_buttons[i].y2);
-        gtk_widget_add_accelerator(b, "clicked", accel_group, (guint) basic_buttons[i].gdk_key, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-        g_signal_connect(b, "clicked", G_CALLBACK(button_clickedCB), &basic_buttons[i].gdk_key);
+                                  keys[i].x1,
+                                  keys[i].x2,
+                                  keys[i].y1,
+                                  keys[i].y2);
+        g_signal_connect(b, "clicked", G_CALLBACK(button_clickedCB), &keys[i].gdk_key);
     }
 
 
@@ -306,7 +322,7 @@ void initialize_app(){
     GdkGeometry size_hints;
     size_hints.min_width = WIDHT;
     size_hints.min_height = HEIGHT;
-    gint spacing = 3;
+    gint spacing = 5;
 
     // Window
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -380,26 +396,34 @@ void initialize_app(){
     // Input box
     input = gtk_entry_new();
     gtk_entry_set_editable(GTK_ENTRY(input), false);
+    gtk_entry_set_alignment (GTK_ENTRY(input), 1);
     //g_signal_connect(input, "key_release_event", G_CALLBACK(key_pressedCB), NULL);
 
     // Buttons
-    GtkWidget *table_buttons = gtk_table_new(NUM_ROW_KEY_BASIC, NUM_COLUMN_KEY_BASIC, TRUE);
-    add_keys(GTK_TABLE(table_buttons), accel_group);
+    GtkWidget *table_basic_buttons = gtk_table_new(NUM_ROW_KEY_BASIC, NUM_COLUMN_KEY_BASIC, TRUE);
+    create_buttons(GTK_TABLE(table_basic_buttons), basic_buttons, sizeof(basic_buttons) / sizeof(Key));
 
+    GtkWidget *table_scientific_buttons = gtk_table_new(NUM_ROW_KEY_SCIENTIFIC, NUM_COLUMN_KEY_SCIENTIFIC, TRUE);
+    create_buttons(GTK_TABLE(table_scientific_buttons), scientific_buttons, sizeof(scientific_buttons) / sizeof(Key));
 
+    GtkWidget *table_programmer_buttons = gtk_table_new(NUM_ROW_KEY_PROGRAMMER, NUM_COLUMN_KEY_PROGRAMMER, TRUE);
+    create_buttons(GTK_TABLE(table_programmer_buttons), programmer_buttons, sizeof(programmer_buttons) / sizeof(Key));
 
     // Container settings
     GtkWidget *main_window_box = gtk_vbox_new(FALSE, spacing);
-    gtk_container_add(GTK_CONTAINER(main_window_box), menu_bar);
-
     GtkWidget *outputs = gtk_hbox_new(FALSE, spacing);
+
     gtk_container_add(GTK_CONTAINER(outputs), output_operand1);
     gtk_container_add(GTK_CONTAINER(outputs), output_operator);
     gtk_container_add(GTK_CONTAINER(outputs), output_operand2);
 
+
+    gtk_container_add(GTK_CONTAINER(main_window_box), menu_bar);
     gtk_container_add(GTK_CONTAINER(main_window_box), outputs);
     gtk_container_add(GTK_CONTAINER(main_window_box), input);
-    gtk_container_add(GTK_CONTAINER(main_window_box), table_buttons);
+    gtk_container_add(GTK_CONTAINER(main_window_box), table_scientific_buttons);
+    gtk_container_add(GTK_CONTAINER(main_window_box), table_programmer_buttons);
+    gtk_container_add(GTK_CONTAINER(main_window_box), table_basic_buttons);
     gtk_container_child_set(GTK_CONTAINER(main_window_box), GTK_WIDGET(menu_bar), "expand", FALSE, NULL);
 
     gtk_container_add(GTK_CONTAINER(window), main_window_box);
