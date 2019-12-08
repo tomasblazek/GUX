@@ -4,8 +4,10 @@
 #include <ctype.h>
 
 
-#define WIDHT 200
-#define HEIGHT 300
+#define MIN_WIDHT 200
+#define MIN_HEIGHT 300
+#define MAX_WIDHT 300
+#define MAX_HEIGHT 450
 #define SIZE_OF_BUFFER 1000
 
 typedef struct Keys {
@@ -69,7 +71,7 @@ Key programmer_buttons[] = {
 int operators[] = {'/', '*','+','-', '\0'};
 
 
-enum Mode {BASIC, SCIENTIFIC, PROGRAMMER};
+//enum Mode {BASIC, SCIENTIFIC, PROGRAMMER} mode; TODO delete
 enum Calculation {OPERAND1, OPERATOR, OPERAND2};
 
 enum Calculation calculation_state = OPERAND1;
@@ -77,13 +79,51 @@ GtkWidget *output_operand1;
 GtkWidget *output_operator;
 GtkWidget *output_operand2;
 GtkWidget *input;
-char *result_str = NULL;
 
 
-void changeModeCB(GtkWidget *widget, gpointer data){
-    gboolean t = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
-    if (t){
-        g_print("Mode");
+void quitCB(GtkWidget *widget, gpointer data){
+    gtk_main_quit();
+}
+
+GtkWidget* get_gtk_container_by_name(GList *containers, gchar *name){
+    GtkWidget *container = NULL;
+    while (containers != NULL) {
+        if(0 == strcmp(gtk_widget_get_name(GTK_WIDGET(containers->data)), name)) {
+            container = GTK_WIDGET(containers->data);
+        }
+        containers = g_list_next(containers);
+    }
+
+    return container;
+}
+
+
+void changeModeBasicCB(GtkWidget *widget, gpointer data) {
+}
+
+void changeModeScientificCB(GtkWidget *widget, gpointer data){
+    gboolean state = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
+    GList *containers = gtk_container_get_children(GTK_CONTAINER(data));
+
+    GtkWidget *container = get_gtk_container_by_name(containers, "table-scientific-buttons");
+
+    if(state){
+        gtk_widget_show(container);
+    } else {
+        gtk_widget_hide(container);
+    }
+}
+
+void changeModeProgrammerCB(GtkWidget *widget, gpointer data) {
+    gboolean state = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
+    GList *containers = gtk_container_get_children(GTK_CONTAINER(data));
+
+    GtkWidget *container = get_gtk_container_by_name(containers, "table-programmer-buttons");
+
+    if (state) {
+        gtk_widget_show(container);
+    } else {
+        gtk_widget_hide(container);
     }
 }
 
@@ -94,13 +134,15 @@ void helpCB(GtkWidget *widget, gpointer data){
 
 
 void clearCB(GtkWidget *widget, gpointer data){
-    //clear
+    GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
+    const gchar *text = gtk_entry_buffer_get_text(buffer);
+    gtk_entry_buffer_delete_text(GTK_ENTRY_BUFFER(buffer), 0, (guint) strlen(text));
+    gtk_label_set_text(GTK_LABEL(output_operand1), "");
+    gtk_label_set_text(GTK_LABEL(output_operator), "");
+    gtk_label_set_text(GTK_LABEL(output_operand2), "");
+    calculation_state = OPERAND1;
 }
 
-
-void quitCB(GtkWidget *widget, gpointer data){
-    gtk_main_quit();
-}
 
 bool is_number(const char* str){
     char *end;
@@ -151,9 +193,7 @@ bool do_math(int operator, double operand1, double operand2, double **result){
             break;
     }
 
-    if (!fail){
-        *result = &res;
-    }
+    **result = res;
 
     return fail;
 }
@@ -163,7 +203,12 @@ void calc_mashine(Key *key){
     static double operand1;
     static int operator;
     static double operand2;
-    double *result;
+    double *result = malloc(sizeof(double));
+    gchar* result_str;
+    if(result == NULL){
+        perror("Error: Malloc math result!");
+        quitCB(NULL, NULL);
+    }
 
     gint in = key->gdk_key;
     gchar* label = key->label;
@@ -219,8 +264,10 @@ void calc_mashine(Key *key){
             break;
         default:
             fprintf(stderr, "Error: State mashine failed!\n");
+            free(result);
             quitCB(NULL, NULL);
     }
+    free(result);
 }
 
 Key* get_button(gint in) {
@@ -237,7 +284,7 @@ Key* get_button(gint in) {
 
 void button_clickedCB(GtkWidget *widget, gpointer data){
     gint in = *(gint *) data;
-
+    gchar *result_str;
     Key *key = get_button(in);
     if (key == NULL){
         return;
@@ -249,10 +296,7 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
     guint cursor;
     g_object_get(input, "cursor-position", &cursor, NULL);
 
-    bool a = is_number("2-2");
-
-    if(in >= GDK_KEY_0 && in <= GDK_KEY_9 || in == GDK_KEY_comma) {
-        // check if new entry text will be number
+    if((in >= GDK_KEY_0 && in <= GDK_KEY_9) || in == GDK_KEY_comma) {
         char append_str[] = {(char) in, '\0'};
         size_t new_text_len = strlen(text) + sizeof(append_str);
         char new_text[new_text_len];
@@ -260,12 +304,12 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
         new_text[cursor] = '\0';
         strcat(new_text, append_str);
         strcat(new_text, text + cursor);
-        if(!is_number(new_text)){
-          return;
+        if(!is_number(new_text)){ // check if new entry text will be number
+
+            return;
         }
-        // add symbol to entry
         guint len = (guint) strlen((*key).label);
-        gtk_entry_buffer_insert_text(GTK_ENTRY_BUFFER(buffer), cursor, (*key).label, len);
+        gtk_entry_buffer_insert_text(GTK_ENTRY_BUFFER(buffer), cursor, (*key).label, len); // add symbol to entry
         g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
     } else if(in == KEY_NEGATIVE){
         double entry = atof(text) * (-1);
@@ -282,11 +326,7 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
             }
         }
     } else if(in == KEY_CLEAR){
-        gtk_entry_buffer_delete_text(GTK_ENTRY_BUFFER(buffer), 0, (guint) strlen(text));
-        gtk_label_set_text(GTK_LABEL(output_operand1), "");
-        gtk_label_set_text(GTK_LABEL(output_operator), "");
-        gtk_label_set_text(GTK_LABEL(output_operand2), "");
-        calculation_state = OPERAND1;
+        clearCB(NULL, NULL);
     }
 
 }
@@ -305,30 +345,24 @@ void create_buttons(GtkTable *t, Key *keys, size_t num_keys){
                                   keys[i].y2);
         g_signal_connect(b, "clicked", G_CALLBACK(button_clickedCB), &keys[i].gdk_key);
     }
-
-
-};
-
-
-void allocate_resources(){
-    result_str = calloc(0, SIZE_OF_BUFFER * sizeof(char));
-    if (result_str == NULL){
-        perror("Error: Calloc\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
-void initialize_app(){
+
+void initialize_app() {
     GdkGeometry size_hints;
-    size_hints.min_width = WIDHT;
-    size_hints.min_height = HEIGHT;
+    size_hints.min_width = MIN_WIDHT;
+    size_hints.min_height = MIN_HEIGHT;
+    size_hints.max_width = MAX_WIDHT;
+    size_hints.max_height = MAX_HEIGHT;
+
     gint spacing = 5;
 
     // Window
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Calc");
     g_signal_connect(window, "destroy", G_CALLBACK(quitCB), NULL);
-    gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &size_hints, GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE);
+    gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &size_hints,
+                                  GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE | GDK_HINT_MAX_SIZE);
 
     // Menu bar
     GtkWidget *menu_bar = gtk_menu_bar_new();
@@ -361,20 +395,22 @@ void initialize_app(){
 
     GtkWidget *check_menu_item;
     GSList *radio_group = NULL;
-    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "_Basic");
+    GtkWidget *key_tables = gtk_vbox_new(FALSE, spacing);
+
+    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "Basic");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_mode), check_menu_item);
-    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeCB), NULL);
+    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeBasicCB), key_tables);
 
     radio_group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(check_menu_item));
-    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "_Scientific");
+    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "Scientific");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_mode), check_menu_item);
-    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeCB), NULL);
+    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeScientificCB), key_tables);
 
 
     radio_group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(check_menu_item));
-    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "_Programmer");
+    check_menu_item = gtk_radio_menu_item_new_with_mnemonic(radio_group, "Programmer");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_mode), check_menu_item);
-    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeCB), NULL);
+    g_signal_connect(check_menu_item, "activate", G_CALLBACK(changeModeProgrammerCB), key_tables);
 
 
     //Menu bar - help
@@ -389,25 +425,29 @@ void initialize_app(){
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_about), menu_item);
 
     // Ouput box
-    output_operand1  = gtk_label_new("");
-    output_operator  = gtk_label_new("");
-    output_operand2  = gtk_label_new("");
+    output_operand1 = gtk_label_new("");
+    output_operator = gtk_label_new("");
+    output_operand2 = gtk_label_new("");
 
     // Input box
     input = gtk_entry_new();
-    gtk_entry_set_editable(GTK_ENTRY(input), false);
-    gtk_entry_set_alignment (GTK_ENTRY(input), 1);
+    gtk_entry_set_alignment(GTK_ENTRY(input), 1);
+    gtk_editable_set_editable(GTK_EDITABLE(input), false);
     //g_signal_connect(input, "key_release_event", G_CALLBACK(key_pressedCB), NULL);
 
     // Buttons
     GtkWidget *table_basic_buttons = gtk_table_new(NUM_ROW_KEY_BASIC, NUM_COLUMN_KEY_BASIC, TRUE);
     create_buttons(GTK_TABLE(table_basic_buttons), basic_buttons, sizeof(basic_buttons) / sizeof(Key));
+    gtk_widget_set_name(table_basic_buttons, "table-basic-buttons");
 
     GtkWidget *table_scientific_buttons = gtk_table_new(NUM_ROW_KEY_SCIENTIFIC, NUM_COLUMN_KEY_SCIENTIFIC, TRUE);
     create_buttons(GTK_TABLE(table_scientific_buttons), scientific_buttons, sizeof(scientific_buttons) / sizeof(Key));
+    gtk_widget_set_name(table_scientific_buttons, "table-scientific-buttons");
 
     GtkWidget *table_programmer_buttons = gtk_table_new(NUM_ROW_KEY_PROGRAMMER, NUM_COLUMN_KEY_PROGRAMMER, TRUE);
     create_buttons(GTK_TABLE(table_programmer_buttons), programmer_buttons, sizeof(programmer_buttons) / sizeof(Key));
+    gtk_widget_set_name(table_programmer_buttons, "table-programmer-buttons");
+
 
     // Container settings
     GtkWidget *main_window_box = gtk_vbox_new(FALSE, spacing);
@@ -421,9 +461,10 @@ void initialize_app(){
     gtk_container_add(GTK_CONTAINER(main_window_box), menu_bar);
     gtk_container_add(GTK_CONTAINER(main_window_box), outputs);
     gtk_container_add(GTK_CONTAINER(main_window_box), input);
-    gtk_container_add(GTK_CONTAINER(main_window_box), table_scientific_buttons);
-    gtk_container_add(GTK_CONTAINER(main_window_box), table_programmer_buttons);
-    gtk_container_add(GTK_CONTAINER(main_window_box), table_basic_buttons);
+    gtk_container_add(GTK_CONTAINER(key_tables), table_scientific_buttons);
+    gtk_container_add(GTK_CONTAINER(key_tables), table_programmer_buttons);
+    gtk_container_add(GTK_CONTAINER(key_tables), table_basic_buttons);
+    gtk_container_add(GTK_CONTAINER(main_window_box), key_tables);
     gtk_container_child_set(GTK_CONTAINER(main_window_box), GTK_WIDGET(menu_bar), "expand", FALSE, NULL);
 
     gtk_container_add(GTK_CONTAINER(window), main_window_box);
@@ -431,11 +472,11 @@ void initialize_app(){
     // Show all
     gtk_widget_show_all(window);
 
-    allocate_resources();
-//    gtk_widget_hide(basic_buttons[0].button);
-//    gtk_widget_show(basic_buttons[0].button);
-}
+    // Hide extended mode keys
+    gtk_widget_hide(table_scientific_buttons);
+    gtk_widget_hide(table_programmer_buttons);
 
+}
 
 int main( int argc, char *argv[] )
 {
