@@ -14,6 +14,7 @@ typedef struct Keys {
     GtkWidget *button;
     gchar *label;
     gint gdk_key;
+    gint gdk_key2;
     guint x1;
     guint x2;
     guint y1;
@@ -21,54 +22,58 @@ typedef struct Keys {
 } Key;
 
 // my keys
-#define KEY_CLEAR (-1)
-#define KEY_NEGATIVE (-2)
+#define KEY_UNDECLARED (-1)
+#define KEY_CLEAR (-2)
+#define KEY_NEGATIVE (-1)
 
 
 #define NUM_ROW_KEY_BASIC 5
 #define NUM_COLUMN_KEY_BASIC 4
 Key basic_buttons[] = {
-        {NULL, "↩",     GDK_KEY_BackSpace,  0, 1, 0, 1},
-        {NULL, "CE",    KEY_CLEAR,          1, 2, 0, 1},
-        {NULL, "(-1)",  KEY_NEGATIVE,       3, 4, 0, 1},
-        {NULL, "1",     GDK_KEY_1,          0, 1, 1, 2},
-        {NULL, "2",     GDK_KEY_2,          1, 2, 1, 2},
-        {NULL, "3",     GDK_KEY_3,          2, 3, 1, 2},
-        {NULL, "+",     GDK_KEY_plus,       3, 4, 1, 2},
-        {NULL, "4",     GDK_KEY_4,          0, 1, 2, 3},
-        {NULL, "5",     GDK_KEY_5,          1, 2, 2, 3},
-        {NULL, "6",     GDK_KEY_6,          2, 3, 2, 3},
-        {NULL, "-",     GDK_KEY_minus,      3, 4, 2, 3},
-        {NULL, "7",     GDK_KEY_7,          0, 1, 3, 4},
-        {NULL, "8",     GDK_KEY_8,          1, 2, 3, 4},
-        {NULL, "9",     GDK_KEY_9,          2, 3, 3, 4},
-        {NULL, "×",     GDK_KEY_asterisk,   3, 4, 3, 4},
-        {NULL, ",",     GDK_KEY_comma,      0, 1, 4, 5},
-        {NULL, "0",     GDK_KEY_0,          1, 2, 4, 5},
-        {NULL, "=",     GDK_KEY_equal,      2, 3, 4, 5},
-        {NULL, "÷",     GDK_KEY_slash,      3, 4, 4, 5},
+        {NULL, "↩",     GDK_KEY_BackSpace,  KEY_UNDECLARED, 0, 1, 0, 1},
+        {NULL, "CE",    KEY_CLEAR,          KEY_UNDECLARED, 1, 2, 0, 1},
+        {NULL, "(-1)",  KEY_NEGATIVE,       KEY_UNDECLARED, 3, 4, 0, 1},
+        {NULL, "1",     GDK_KEY_1,          GDK_KEY_KP_1, 0, 1, 1, 2},
+        {NULL, "2",     GDK_KEY_2,          GDK_KEY_KP_2, 1, 2, 1, 2},
+        {NULL, "3",     GDK_KEY_3,          GDK_KEY_KP_3, 2, 3, 1, 2},
+        {NULL, "+",     GDK_KEY_plus,       GDK_KEY_KP_Add, 3, 4, 1, 2},
+        {NULL, "4",     GDK_KEY_4,          GDK_KEY_KP_4, 0, 1, 2, 3},
+        {NULL, "5",     GDK_KEY_5,          GDK_KEY_KP_5, 1, 2, 2, 3},
+        {NULL, "6",     GDK_KEY_6,          GDK_KEY_KP_6, 2, 3, 2, 3},
+        {NULL, "-",     GDK_KEY_minus,      GDK_KEY_KP_Subtract, 3, 4, 2, 3},
+        {NULL, "7",     GDK_KEY_7,          GDK_KEY_KP_7, 0, 1, 3, 4},
+        {NULL, "8",     GDK_KEY_8,          GDK_KEY_KP_8, 1, 2, 3, 4},
+        {NULL, "9",     GDK_KEY_9,          GDK_KEY_KP_9, 2, 3, 3, 4},
+        {NULL, "×",     GDK_KEY_asterisk,   GDK_KEY_KP_Multiply, 3, 4, 3, 4},
+        {NULL, ",",     GDK_KEY_comma,      GDK_KEY_KP_Decimal, 0, 1, 4, 5},
+        {NULL, "0",     GDK_KEY_0,          GDK_KEY_KP_0, 1, 2, 4, 5},
+        {NULL, "=",     GDK_KEY_Return,     GDK_KEY_KP_Enter, 2, 3, 4, 5},
+        {NULL, "÷",     GDK_KEY_slash,      GDK_KEY_KP_Divide, 3, 4, 4, 5},
 };
 
 #define NUM_ROW_KEY_SCIENTIFIC 1
 #define NUM_COLUMN_KEY_SCIENTIFIC 4
 Key scientific_buttons[] = {
-        {NULL, "!", GDK_KEY_BackSpace, 0, 1, 0, 1}, //TODO GDK key
-        {NULL, "x²", GDK_KEY_BackSpace, 1, 2, 0, 1},
-        {NULL, "√", GDK_KEY_BackSpace, 2, 3, 0, 1},
-        {NULL, "log", GDK_KEY_BackSpace, 3, 4, 0, 1},
+        {NULL, "!", GDK_KEY_BackSpace, KEY_UNDECLARED, 0, 1, 0, 1}, //TODO GDK key
+        {NULL, "x²", GDK_KEY_BackSpace, KEY_UNDECLARED, 1, 2, 0, 1},
+        {NULL, "√", GDK_KEY_BackSpace, KEY_UNDECLARED, 2, 3, 0, 1},
+        {NULL, "log", GDK_KEY_BackSpace, KEY_UNDECLARED, 3, 4, 0, 1},
 };
 
 
 #define NUM_ROW_KEY_PROGRAMMER 1
 #define NUM_COLUMN_KEY_PROGRAMMER 4
 Key programmer_buttons[] = {
-        {NULL, "AND", GDK_KEY_BackSpace, 0, 1, 0, 1}, //TODO GDK key
-        {NULL, "OR", GDK_KEY_BackSpace, 1, 2, 0, 1},
-        {NULL, "NOT", GDK_KEY_BackSpace, 2, 3, 0, 1},
-        {NULL, "XOR", GDK_KEY_BackSpace, 3, 4, 0, 1},
+        {NULL, "AND", GDK_KEY_BackSpace, KEY_UNDECLARED, 0, 1, 0, 1}, //TODO GDK key
+        {NULL, "OR", GDK_KEY_BackSpace, KEY_UNDECLARED, 1, 2, 0, 1},
+        {NULL, "NOT", GDK_KEY_BackSpace, KEY_UNDECLARED, 2, 3, 0, 1},
+        {NULL, "XOR", GDK_KEY_BackSpace, KEY_UNDECLARED, 3, 4, 0, 1},
 };
 
-int operators[] = {'/', '*','+','-', '\0'};
+gint operators[] = {GDK_KEY_plus, GDK_KEY_KP_Add,
+                    GDK_KEY_minus, GDK_KEY_KP_Subtract,
+                    GDK_KEY_asterisk, GDK_KEY_KP_Multiply,
+                    GDK_KEY_slash, GDK_KEY_KP_Divide};
 
 
 //enum Mode {BASIC, SCIENTIFIC, PROGRAMMER} mode; TODO delete
@@ -153,8 +158,8 @@ bool is_number(const char* str){
     return true;
 }
 
-bool is_operator(int c){
-    for (int i = 0; operators[i] > 0 ; i++){
+bool is_operator(gint c){
+    for (int i = 0; i < sizeof(operators)/sizeof(gint); i++){
         if (c == operators[i] ) {
             return true;
         }
@@ -210,18 +215,16 @@ void calc_mashine(Key *key){
         quitCB(NULL, NULL);
     }
 
-    gint in = key->gdk_key;
-    gchar* label = key->label;
     const gchar *input_str = gtk_entry_get_text(GTK_ENTRY(input));
 
     printf("State: %d\n", calculation_state);
     printf("Entry input: %s\n", input_str);
-    printf("Data input: %c\n", in);
+    printf("Data input: %c\n", key->gdk_key);
 
     switch(calculation_state){
         case OPERAND1:
-            if (is_operator(in) && strcmp(input_str, "") != 0){
-                operator = in;
+            if (is_operator(key->gdk_key) && strcmp(input_str, "") != 0){
+                operator = key->gdk_key;
                 operand1 = atof(input_str);
                 calculation_state = OPERATOR;
                 gtk_label_set_text(GTK_LABEL(output_operand1), input_str);
@@ -231,9 +234,9 @@ void calc_mashine(Key *key){
             }
             break;
         case OPERATOR:
-            if (is_operator(in)){
-                operator = in;
-                gtk_label_set_text(GTK_LABEL(output_operator), label);
+            if (is_operator(key->gdk_key)){
+                operator = key->gdk_key;
+                gtk_label_set_text(GTK_LABEL(output_operator), key->label);
                 gtk_entry_set_text(GTK_ENTRY(input), "");
                 break;
             }
@@ -243,7 +246,7 @@ void calc_mashine(Key *key){
             }
             break;
         case OPERAND2:
-            if (key->gdk_key == '='){
+            if (key->gdk_key == GDK_KEY_Return || key->gdk_key2 == GDK_KEY_KP_Enter){
                 operand2 = atof(input_str);
                 if (do_math(operator, operand1, operand2, &result)){
                     gtk_label_set_text(GTK_LABEL(output_operand1), "");
@@ -273,12 +276,14 @@ void calc_mashine(Key *key){
 Key* get_button(gint in) {
     size_t num_keys = sizeof(basic_buttons) / sizeof(Key);
     for(int i = 0; i < num_keys; i++){
-        if (basic_buttons[i].gdk_key == in){
+        if (basic_buttons[i].gdk_key == in || basic_buttons[i].gdk_key2 == in){
             return &basic_buttons[i];
         }
     }
     return NULL;
 }
+
+
 
 
 
@@ -305,7 +310,6 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
         strcat(new_text, append_str);
         strcat(new_text, text + cursor);
         if(!is_number(new_text)){ // check if new entry text will be number
-
             return;
         }
         guint len = (guint) strlen((*key).label);
@@ -332,6 +336,19 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
 }
 
 
+gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
+    printf("%d\n", event->keyval);
+    gint in = event->keyval;
+    if ((event->keyval >= GDK_KEY_KP_0 && event->keyval <= GDK_KEY_KP_9)){
+        in = in - GDK_KEY_KP_0 + GDK_KEY_0; //normalization to classic number key
+    } else if(event->keyval == GDK_KEY_KP_Decimal){
+        in = GDK_KEY_comma;
+    }
+
+    button_clickedCB(widget, (gpointer) &in);
+    return TRUE;
+}
+
 
 void create_buttons(GtkTable *t, Key *keys, size_t num_keys){
     GtkWidget *b;
@@ -343,6 +360,7 @@ void create_buttons(GtkTable *t, Key *keys, size_t num_keys){
                                   keys[i].x2,
                                   keys[i].y1,
                                   keys[i].y2);
+        gtk_button_set_focus_on_click(GTK_BUTTON(b), FALSE);
         g_signal_connect(b, "clicked", G_CALLBACK(button_clickedCB), &keys[i].gdk_key);
     }
 }
@@ -361,6 +379,7 @@ void initialize_app() {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Calc");
     g_signal_connect(window, "destroy", G_CALLBACK(quitCB), NULL);
+    g_signal_connect(window, "key_press_event", G_CALLBACK(key_pressedCB), NULL);
     gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &size_hints,
                                   GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE | GDK_HINT_MAX_SIZE);
 
@@ -433,7 +452,6 @@ void initialize_app() {
     input = gtk_entry_new();
     gtk_entry_set_alignment(GTK_ENTRY(input), 1);
     gtk_editable_set_editable(GTK_EDITABLE(input), false);
-    //g_signal_connect(input, "key_release_event", G_CALLBACK(key_pressedCB), NULL);
 
     // Buttons
     GtkWidget *table_basic_buttons = gtk_table_new(NUM_ROW_KEY_BASIC, NUM_COLUMN_KEY_BASIC, TRUE);
