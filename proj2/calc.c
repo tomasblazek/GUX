@@ -134,7 +134,16 @@ void changeModeProgrammerCB(GtkWidget *widget, gpointer data) {
 
 
 void helpCB(GtkWidget *widget, gpointer data){
-    g_print("Help");
+    GtkWidget *window = gtk_widget_get_parent(gtk_widget_get_parent(widget));
+    const gchar *authors[] = { "Tomáš Blažek (xblaze31)", NULL};
+
+    gtk_show_about_dialog(
+            GTK_WINDOW(window),
+            "program-name", "Calc",
+            "comments", "Project calculator created for course GUX. Implemented by using the gtk+2.0 toolkit.",
+            "copyright", "Copyright © 2019 by Tomáš Blažek",
+            "authors", authors,
+            NULL);
 }
 
 
@@ -346,7 +355,7 @@ gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
     }
 
     button_clickedCB(widget, (gpointer) &in);
-    return TRUE;
+    return FALSE;
 }
 
 
