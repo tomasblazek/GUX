@@ -1,4 +1,4 @@
-CFLAGS = -g -O2 -Wall -DGTK_DISABLE_DEPRECATED=1 -DGDK_DISABLE_DEPRECATED=1 -DG_DISABLE_DEPRECATED=1 `pkg-config --cflags gtk+-2.0`
+CFLAGS = -g -std=c11 -O2 -Wall -pedantic `pkg-config --cflags gtk+-2.0`
 LDLIBS = `pkg-config --libs gtk+-2.0`
 
 all : calc 
