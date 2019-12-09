@@ -4,10 +4,8 @@
 #include <math.h>
 
 
-#define MIN_WIDHT 200
-#define MIN_HEIGHT 300
-#define MAX_WIDHT 300
-#define MAX_HEIGHT 450
+#define MIN_WIDHT 320
+#define MIN_HEIGHT 400
 #define SIZE_OF_BUFFER 1000
 
 
@@ -211,8 +209,7 @@ int float_to_string(double num, char **str){
     if (ret < 0) {
         return EXIT_FAILURE;
     }
-
-    *str = buffer;
+    strcpy(*str, buffer);
     return EXIT_SUCCESS;
 }
 
@@ -270,12 +267,7 @@ void calc_mashine(Key *key){
     static double operand1;
     static int operator;
     static double operand2;
-    double *result = malloc(sizeof(double));
-    gchar* result_str;
-    if(result == NULL){
-        perror("Error: Malloc math result!");
-        quitCB(NULL, NULL);
-    }
+
 
     const gchar *input_text = gtk_entry_get_text(GTK_ENTRY(input));
 
@@ -310,6 +302,11 @@ void calc_mashine(Key *key){
         case OPERAND2:
             if (key->gdk_key == GDK_KEY_Return || key->gdk_key2 == GDK_KEY_KP_Enter){
                 operand2 = atof(input_text);
+                double *result = malloc(sizeof(double));
+                if(result == NULL){
+                    perror("Error: Malloc math result!");
+                    quitCB(NULL, NULL);
+                }
                 if (do_math(operator, operand1, operand2, &result)){
                     gtk_label_set_text(GTK_LABEL(output_operand1), "");
                     gtk_label_set_text(GTK_LABEL(output_operator), "Error");
@@ -321,27 +318,31 @@ void calc_mashine(Key *key){
                 if(get_button(operator)->arity == BINARY) {
                     gtk_label_set_text(GTK_LABEL(output_operand2), input_text);
                 }
-
+                gchar* result_str = malloc(SIZE_OF_BUFFER * sizeof(gchar));
+                if(result_str == NULL){
+                    perror("Error: Malloc math result!");
+                    free(result);
+                    quitCB(NULL, NULL);
+                }
                 float_to_string(*result, &result_str);
                 guint len = (guint) strlen(result_str);
                 GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
                 gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, len);
                 g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
                 calculation_state = OPERAND1;
+                free(result_str);
+                free(result);
             }
             break;
         default:
             fprintf(stderr, "Error: State mashine failed!\n");
-            free(result);
             quitCB(NULL, NULL);
     }
-    free(result);
 }
 
 
 void button_clickedCB(GtkWidget *widget, gpointer data){
     gint in = *(gint *) data;
-    gchar *result_str;
     Key *key = get_button(in);
     if (key == NULL)
         return;
@@ -370,9 +371,15 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
         g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
     } else if(in == KEY_NEGATIVE){
         double entry = atof(text) * (-1);
+        gchar* result_str = malloc(SIZE_OF_BUFFER * sizeof(gchar));
+        if(result_str == NULL){
+            perror("Error: Malloc math result!");
+            quitCB(NULL, NULL);
+        }
         float_to_string(entry, &result_str);
         gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, (gint) strlen(result_str));
         g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, strlen(result_str), FALSE, NULL);
+        free(result_str);
     } else if(in == GDK_KEY_BackSpace){
         if (cursor > 0) {
             double entry = atof(text);
@@ -392,10 +399,15 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
 
 gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
     gint in = event->keyval;
+    printf("%d\n", in);
     if ((event->keyval >= GDK_KEY_KP_0 && event->keyval <= GDK_KEY_KP_9)){
         in = in - GDK_KEY_KP_0 + GDK_KEY_0; //normalization to classic number key
     } else if(event->keyval == GDK_KEY_KP_Decimal){
         in = GDK_KEY_comma;
+    } else if(event->keyval == GDK_KEY_h || event->keyval == GDK_KEY_c || event->keyval == GDK_KEY_q){
+        return FALSE;
+    } else if(event->keyval == GDK_KEY_Left || event->keyval == GDK_KEY_Right){
+        return FALSE;
     }
 
     button_clickedCB(widget, (gpointer) &in);
