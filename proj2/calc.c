@@ -277,18 +277,14 @@ void calc_mashine(Key *key){
         quitCB(NULL, NULL);
     }
 
-    const gchar *input_str = gtk_entry_get_text(GTK_ENTRY(input));
-
-    printf("State: %d\n", calculation_state);
-    printf("Entry input: %s\n", input_str);
-    printf("Data input: %c\n", key->gdk_key);
+    const gchar *input_text = gtk_entry_get_text(GTK_ENTRY(input));
 
     switch(calculation_state){
         case OPERAND1:
-            if ((key->arity == BINARY || key->arity == UNARY) && strcmp(input_str, "") != 0){
+            if ((key->arity == BINARY || key->arity == UNARY) && strcmp(input_text, "") != 0){
                 operator = key->gdk_key;
-                operand1 = atof(input_str);
-                gtk_label_set_text(GTK_LABEL(output_operand1), input_str);
+                operand1 = atof(input_text);
+                gtk_label_set_text(GTK_LABEL(output_operand1), input_text);
                 gtk_label_set_text(GTK_LABEL(output_operator), key->label);
                 gtk_label_set_text(GTK_LABEL(output_operand2), "");
                 gtk_entry_set_text(GTK_ENTRY(input), "");
@@ -303,7 +299,7 @@ void calc_mashine(Key *key){
                 break;
             }
 
-            if (is_number(input_str) && strcmp(input_str, "") != 0 ){
+            if (is_number(input_text) && strcmp(input_text, "") != 0 ){
                 calculation_state = OPERAND2;
                 break;
             }
@@ -313,20 +309,21 @@ void calc_mashine(Key *key){
             }
         case OPERAND2:
             if (key->gdk_key == GDK_KEY_Return || key->gdk_key2 == GDK_KEY_KP_Enter){
-                operand2 = atof(input_str);
+                operand2 = atof(input_text);
                 if (do_math(operator, operand1, operand2, &result)){
                     gtk_label_set_text(GTK_LABEL(output_operand1), "");
                     gtk_label_set_text(GTK_LABEL(output_operator), "Error");
                     GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
-                    gtk_entry_buffer_delete_text(GTK_ENTRY_BUFFER(buffer), 0, (guint) strlen(input_str));
+                    gtk_entry_buffer_delete_text(GTK_ENTRY_BUFFER(buffer), 0, (guint) strlen(input_text));
                     calculation_state = OPERAND1;
                     break;
                 }
+                if(get_button(operator)->arity == BINARY) {
+                    gtk_label_set_text(GTK_LABEL(output_operand2), input_text);
+                }
+
                 float_to_string(*result, &result_str);
                 guint len = (guint) strlen(result_str);
-                if(get_button(operator)->arity == BINARY) {
-                    gtk_label_set_text(GTK_LABEL(output_operand2), input_str);
-                }
                 GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
                 gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, len);
                 g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, len, FALSE, NULL);
@@ -394,7 +391,6 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
 
 
 gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
-    printf("%d\n", event->keyval);
     gint in = event->keyval;
     if ((event->keyval >= GDK_KEY_KP_0 && event->keyval <= GDK_KEY_KP_9)){
         in = in - GDK_KEY_KP_0 + GDK_KEY_0; //normalization to classic number key
@@ -431,8 +427,6 @@ void initialize_app() {
     GdkGeometry size_hints;
     size_hints.min_width = MIN_WIDHT;
     size_hints.min_height = MIN_HEIGHT;
-    size_hints.max_width = MAX_WIDHT;
-    size_hints.max_height = MAX_HEIGHT;
 
     gint spacing = 5;
 
@@ -441,8 +435,7 @@ void initialize_app() {
     gtk_window_set_title(GTK_WINDOW(window), "Calc");
     g_signal_connect(window, "destroy", G_CALLBACK(quitCB), NULL);
     g_signal_connect(window, "key_press_event", G_CALLBACK(key_pressedCB), NULL);
-    gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &size_hints,
-                                  GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE | GDK_HINT_MAX_SIZE);
+    gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &size_hints, GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE);
 
     // Menu bar
     GtkWidget *menu_bar = gtk_menu_bar_new();
