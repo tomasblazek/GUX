@@ -1,3 +1,9 @@
+/*
+ * GUX 2. project - Calc
+ * Author: xblaze31
+ * Date: 8.12.2019
+ */
+
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <stdbool.h>
@@ -64,7 +70,7 @@ Key buttons[] = {
         {NULL, ",",     GDK_KEY_comma,      GDK_KEY_KP_Decimal,     BASIC,      CONSTANT,   0, 1, 4, 5},
         {NULL, "0",     GDK_KEY_0,          GDK_KEY_KP_0,           BASIC,      CONSTANT,   1, 2, 4, 5},
         {NULL, "=",     GDK_KEY_Return,     GDK_KEY_KP_Enter,       BASIC,      CONSTANT,   2, 3, 4, 5},
-        {NULL, "÷",     GDK_KEY_slash,      GDK_KEY_KP_Divide,      BASIC,      CONSTANT,   3, 4, 4, 5},
+        {NULL, "÷",     GDK_KEY_slash,      GDK_KEY_KP_Divide,      BASIC,      BINARY,     3, 4, 4, 5},
         {NULL, "!",     KEY_FACTORIAL,      KEY_UNDECLARED,         SCIENTIFIC, UNARY,      0, 1, 0, 1},
         {NULL, "x²",    KEY_POWER,          KEY_UNDECLARED,         SCIENTIFIC, UNARY,      1, 2, 0, 1},
         {NULL, "√",     KEY_SQRT,           KEY_UNDECLARED,         SCIENTIFIC, UNARY,      2, 3, 0, 1},
@@ -83,10 +89,20 @@ GtkWidget *output_operand2;
 GtkWidget *input;
 
 
+/**
+ * Callback to quit running application.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void quitCB(GtkWidget *widget, gpointer data){
     gtk_main_quit();
 }
 
+/**
+ * Get button by GDK value of key from global button array.
+ * @param in   GDK value
+ * @return     Return pointer to key
+ */
 Key* get_button(gint in) {
     size_t num_keys = sizeof(buttons) / sizeof(Key);
     for(int i = 0; i < num_keys; i++){
@@ -97,6 +113,12 @@ Key* get_button(gint in) {
     return NULL;
 }
 
+/**
+ * Get gtk container by its name.
+ * @param containers Container list
+ * @param name       Name of container
+ * @return Return container if found. Otherwise return null.
+ */
 GtkWidget* get_gtk_container_by_name(GList *containers, gchar *name){
     GtkWidget *container = NULL;
     while (containers != NULL) {
@@ -109,11 +131,20 @@ GtkWidget* get_gtk_container_by_name(GList *containers, gchar *name){
     return container;
 }
 
-
+/**
+ * Callback to change calc mode to basic.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void changeModeBasicCB(GtkWidget *widget, gpointer data) {
     mode = BASIC;
 }
 
+/**
+ * Callback to change calc mode to scientific.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void changeModeScientificCB(GtkWidget *widget, gpointer data){
     gboolean state = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
     GList *containers = gtk_container_get_children(GTK_CONTAINER(data));
@@ -128,6 +159,11 @@ void changeModeScientificCB(GtkWidget *widget, gpointer data){
     mode = SCIENTIFIC;
 }
 
+/**
+ * Callback to change calc mode to programmmer.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void changeModeProgrammerCB(GtkWidget *widget, gpointer data) {
     gboolean state = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
     GList *containers = gtk_container_get_children(GTK_CONTAINER(data));
@@ -166,7 +202,11 @@ void changeModeProgrammerCB(GtkWidget *widget, gpointer data) {
     mode = PROGRAMMER;
 }
 
-
+/**
+ * Callback to show about dialog.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void helpCB(GtkWidget *widget, gpointer data){
     GtkWidget *window = gtk_widget_get_parent(gtk_widget_get_parent(widget));
     const gchar *authors[] = { "Tomáš Blažek (xblaze31)", NULL};
@@ -180,7 +220,11 @@ void helpCB(GtkWidget *widget, gpointer data){
             NULL);
 }
 
-
+/**
+ * Callback to reset to init state of calc.
+ * @param widget    Widget
+ * @param data      Data
+ */
 void clearCB(GtkWidget *widget, gpointer data){
     GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
     const gchar *text = gtk_entry_buffer_get_text(buffer);
@@ -191,18 +235,27 @@ void clearCB(GtkWidget *widget, gpointer data){
     calculation_state = OPERAND1;
 }
 
-
+/**
+ * Function tests string to number.
+ * @param str
+ * @return Return TRUE if string is number. Otherwise return FALSE.
+ */
 bool is_number(const char* str){
     char *end;
     strtod(str, &end);
     if(strcmp(end, "") != 0){
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 
-
-int float_to_string(double num, char **str){
+/**
+ * Convert floating point number to string.
+ * @param num
+ * @param str
+ * @return
+ */
+int double_to_string(double num, char **str){
     char buffer[SIZE_OF_BUFFER];
     int ret = snprintf(buffer, sizeof buffer, "%.10g", num);
 
@@ -213,8 +266,16 @@ int float_to_string(double num, char **str){
     return EXIT_SUCCESS;
 }
 
+/**
+ * Do math operations.
+ * @param operator  Operator
+ * @param operand1  First operand
+ * @param operand2  Second operand
+ * @param result    Pointer to result
+ * @return  Return TRUE if results is calculated right. Otherwise return FALSE.
+ */
 bool do_math(gint operator, double operand1, double operand2, double **result){
-    bool fail = false;
+    bool ok = TRUE;
     double res = 0;
     switch (operator){
         case GDK_KEY_plus:
@@ -228,7 +289,7 @@ bool do_math(gint operator, double operand1, double operand2, double **result){
         case KEY_FACTORIAL:
             res = 1;
             if (operand1 < 0) {
-                fail = true;
+                ok = FALSE;
             }
             else {
                 for (int i = 1; i <= operand1; i++) {
@@ -253,16 +314,19 @@ bool do_math(gint operator, double operand1, double operand2, double **result){
         case KEY_XOR:
             res = (int) operand1 ^ (int) operand2; break;
         default:
-            fail = true;
+            ok = FALSE;
             break;
     }
 
     **result = res;
 
-    return fail;
+    return ok;
 }
 
-
+/**
+ * Calc state mashine.
+ * @param key Input key
+ */
 void calc_mashine(Key *key){
     static double operand1;
     static int operator;
@@ -307,7 +371,7 @@ void calc_mashine(Key *key){
                     perror("Error: Malloc math result!");
                     quitCB(NULL, NULL);
                 }
-                if (do_math(operator, operand1, operand2, &result)){
+                if (!do_math(operator, operand1, operand2, &result)){
                     gtk_label_set_text(GTK_LABEL(output_operand1), "");
                     gtk_label_set_text(GTK_LABEL(output_operator), "Error");
                     GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
@@ -324,7 +388,7 @@ void calc_mashine(Key *key){
                     free(result);
                     quitCB(NULL, NULL);
                 }
-                float_to_string(*result, &result_str);
+                double_to_string(*result, &result_str);
                 guint len = (guint) strlen(result_str);
                 GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(input));
                 gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, len);
@@ -340,7 +404,11 @@ void calc_mashine(Key *key){
     }
 }
 
-
+/**
+ * Callback to button click.
+ * @param widget    Widget
+ * @param data      Value of GDK key
+ */
 void button_clickedCB(GtkWidget *widget, gpointer data){
     gint in = *(gint *) data;
     Key *key = get_button(in);
@@ -376,7 +444,7 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
             perror("Error: Malloc math result!");
             quitCB(NULL, NULL);
         }
-        float_to_string(entry, &result_str);
+        double_to_string(entry, &result_str);
         gtk_entry_buffer_set_text(GTK_ENTRY_BUFFER(buffer), result_str, (gint) strlen(result_str));
         g_signal_emit_by_name(input, "move-cursor", GTK_MOVEMENT_LOGICAL_POSITIONS, strlen(result_str), FALSE, NULL);
         free(result_str);
@@ -396,10 +464,14 @@ void button_clickedCB(GtkWidget *widget, gpointer data){
     calc_mashine(key);
 }
 
-
+/**
+ * Callback to key press.
+ * @param widget    Widged
+ * @param event     Event key pressed
+ * @return Return TRUE when handled key press event. Otherwise return FALSE.
+ */
 gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
     gint in = event->keyval;
-    printf("%d\n", in);
     if ((event->keyval >= GDK_KEY_KP_0 && event->keyval <= GDK_KEY_KP_9)){
         in = in - GDK_KEY_KP_0 + GDK_KEY_0; //normalization to classic number key
     } else if(event->keyval == GDK_KEY_KP_Decimal){
@@ -414,7 +486,13 @@ gboolean key_pressedCB(GtkWidget *widget, GdkEventKey *event){
     return TRUE;
 }
 
-
+/**
+ * Function create buttons and fill them to input Gtk table.
+ * @param t         Gtk table
+ * @param keys      Array of keys
+ * @param num_keys  Size array of keys
+ * @param mode      Button mode
+ */
 void create_buttons(GtkTable *t, Key *keys, size_t num_keys, enum Mode mode){
     GtkWidget *b;
     for (int i = 0; i < num_keys; i++){
@@ -434,7 +512,9 @@ void create_buttons(GtkTable *t, Key *keys, size_t num_keys, enum Mode mode){
     }
 }
 
-
+/**
+ * Initialize all widgets of application.
+ */
 void initialize_app() {
     GdkGeometry size_hints;
     size_hints.min_width = MIN_WIDHT;
@@ -517,7 +597,7 @@ void initialize_app() {
     // Input box
     input = gtk_entry_new();
     gtk_entry_set_alignment(GTK_ENTRY(input), 1);
-    gtk_editable_set_editable(GTK_EDITABLE(input), false);
+    gtk_editable_set_editable(GTK_EDITABLE(input), FALSE);
 
     // Buttons
     GtkWidget *table_basic_buttons = gtk_table_new(NUM_ROW_KEY_BASIC, NUM_COLUMN_KEY_BASIC, TRUE);
